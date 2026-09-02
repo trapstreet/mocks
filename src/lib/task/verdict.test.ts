@@ -63,6 +63,8 @@ describe("summarizeVerdict", () => {
     const bias = details.find((d) => d.name === "bias_stats");
     expect(bias?.entries).toContainEqual({ key: "acquiescence_suspected", value: "no" });
     expect(bias?.entries).toContainEqual({ key: "mean_response", value: "3.41" });
+    // 28.1 rendered as "28.10" beside a bare "50" — one padded, one not.
+    expect(bias?.entries).toContainEqual({ key: "pct_agree", value: "50" });
   });
 
   // A bare "failed" reads as a broken site. The judge already explained itself.

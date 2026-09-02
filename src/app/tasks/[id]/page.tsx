@@ -1,3 +1,4 @@
+import { emphasise } from "@/lib/emphasis";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { getTask } from "@/lib/trapstreet";
@@ -44,7 +45,7 @@ export default async function TaskPage({ params }: { params: Promise<{ id: strin
           {task.title}
         </h1>
         {task.summary && (
-          <p className="max-w-[64ch] text-[14px] leading-[1.6]">{task.summary}</p>
+          <p className="max-w-[64ch] text-[14px] leading-[1.6]">{emphasise(task.summary)}</p>
         )}
       </header>
       <BenchmarkRunner taskId={task.id} />

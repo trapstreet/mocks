@@ -261,7 +261,7 @@ export function BenchmarkRunner({ taskId }: { taskId: string }) {
                       </span>
                     )}
                     {s.kind === "answer" && (
-                      <span className={s.passed ? "text-[var(--acc)]" : ""}>
+                      <span className={s.passed ? "text-[var(--ok)]" : "text-[var(--bad)]"}>
                         answered <span className="text-[var(--head)]">{s.answer}</span> ·{" "}
                         {s.passed ? "passed" : "failed"}
                       </span>
@@ -299,7 +299,7 @@ export function BenchmarkRunner({ taskId }: { taskId: string }) {
                     <span className="text-[var(--sec)]">{c.id}</span>
                     {busy === c.id && <span>judging…</span>}
                     {r && (
-                      <span className={r.passed ? "text-[var(--acc)]" : "text-[var(--sec)]"}>
+                      <span className={r.passed ? "text-[var(--ok)]" : "text-[var(--bad)]"}>
                         {r.passed ? "passed" : "failed"} · {r.score}
                       </span>
                     )}

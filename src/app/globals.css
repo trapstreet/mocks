@@ -1,20 +1,163 @@
 @import "tailwindcss";
 
-:root {
-  --bg: #0b0d12;
-  --deep: #10131a;
-  --bd: #1e2430;
-  --head: #f2f5fa;
-  --sec: #aab4c4;
-  --mut: #6b7688;
-  --acc: #5b9dff;
+/* ---------------------------------------------------------------------------
+   Design tokens — "Trapstreet Atlas", taken from trapstreet.run so that a
+   visitor arriving here and a visitor arriving there are looking at one
+   family of pages. Values are copied verbatim; the syntax-highlighting
+   tokens are not, because this site renders no markdown.
+
+   Theme selection differs from the platform on purpose. trapstreet paints
+   [data-theme] from localStorage before first paint, which needs a boot
+   script and a toggle; this site has neither, so a pure copy would pin every
+   visitor to dark. The three-way structure below honours a system
+   preference with no JavaScript at all, and still lets [data-theme] win if
+   a toggle is ever added.
+--------------------------------------------------------------------------- */
+:root,
+:root[data-theme="dark"] {
+  /* surfaces */
+  --bg: #0d1420;
+  --deep: #0a1019;
+  --hov: #121b29;
+  --bd: #1e2c40;
+  --bdl: #182335;
+  --chip: #243452;
+  --btn: #2f4463;
+
+  /* text, brightest to faintest */
+  --head: #f0f5fb;
+  --txt: #dde6f2;
+  --brt: #c6d3e3;
+  --sec: #b3c0d1;
+  --body: #94a3b8;
+  --mut: #6b7c94;
+  --fnt: #455468;
+
+  /* accent. --onacc is what sits ON the accent: the Atlas accent is a
+     light blue, so its foreground is the page dark, not white. */
+  --acc: oklch(0.72 0.15 235);
+  --accT: oklch(0.8 0.13 235);
+  --onacc: #0d1420;
+
+  --grid: oklch(1 0 0 / 0.05);
+  --ok: oklch(0.78 0.13 165);
+  --bad: oklch(0.68 0.17 25);
+  --warn: oklch(0.82 0.14 85);
 }
+
+:root[data-theme="light"] {
+  --bg: #f2f4fa;
+  --deep: #e8ecf6;
+  --hov: #e1e7f3;
+  --bd: #c6cee0;
+  --bdl: #d7dcea;
+  --chip: #b6c0d6;
+  --btn: #97a3bd;
+
+  --head: #242f43;
+  --txt: #2d384c;
+  --brt: #333e51;
+  --sec: #3c4860;
+  --body: #616d85;
+  --mut: #58637d;
+  --fnt: #7c88a2;
+
+  /* Atlas specifies L=0.55; trapstreet measured that at 4.30:1 against
+     --onacc, under AA for 13px type on a filled button, and settled on
+     0.53 (4.66:1). Kept, so the two sites are the same blue. */
+  --acc: oklch(0.53 0.16 245);
+  --accT: oklch(0.46 0.16 245);
+  --onacc: #f2f4fa;
+
+  --grid: oklch(0.35 0.07 245 / 0.12);
+  --ok: oklch(0.5 0.13 170);
+  --bad: oklch(0.52 0.18 25);
+  --warn: oklch(0.53 0.14 75);
+}
+
+/* A visitor who has never touched a toggle gets the palette their system
+   asked for. [data-theme="dark"] still outranks this. */
 @media (prefers-color-scheme: light) {
   :root:not([data-theme="dark"]) {
-    --bg: #ffffff; --deep: #f6f8fb; --bd: #e2e7ef;
-    --head: #0d1017; --sec: #414b5c; --mut: #7d8798; --acc: #1f6feb;
+    --bg: #f2f4fa;
+    --deep: #e8ecf6;
+    --hov: #e1e7f3;
+    --bd: #c6cee0;
+    --bdl: #d7dcea;
+    --chip: #b6c0d6;
+    --btn: #97a3bd;
+
+    --head: #242f43;
+    --txt: #2d384c;
+    --brt: #333e51;
+    --sec: #3c4860;
+    --body: #616d85;
+    --mut: #58637d;
+    --fnt: #7c88a2;
+
+    --acc: oklch(0.53 0.16 245);
+    --accT: oklch(0.46 0.16 245);
+    --onacc: #f2f4fa;
+
+    --grid: oklch(0.35 0.07 245 / 0.12);
+    --ok: oklch(0.5 0.13 170);
+    --bad: oklch(0.52 0.18 25);
+    --warn: oklch(0.53 0.14 75);
   }
 }
-body { background: var(--bg); color: var(--sec); }
-a { color: var(--acc); }
-a:hover { text-decoration: underline; }
+
+:root {
+  --stack-sans: var(--font-archivo), ui-sans-serif, system-ui, -apple-system,
+    BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --stack-mono: var(--font-spline), ui-monospace, SFMono-Regular, "SF Mono", Menlo,
+    Consolas, monospace;
+}
+
+@theme {
+  --font-sans: var(--stack-sans);
+  --font-mono: var(--stack-mono);
+
+  /* Atlas draws no rounded corners and no shadows anywhere. Zeroing the
+     scale keeps a stray `rounded-*` from disagreeing with the design. */
+  --radius-xs: 0px;
+  --radius-sm: 0px;
+  --radius-md: 0px;
+  --radius-lg: 0px;
+  --radius-xl: 0px;
+  --radius-2xl: 0px;
+  --radius-3xl: 0px;
+}
+
+/* These belong in @layer base, not at the top level. Tailwind v4 emits its
+   utilities inside cascade layers, and an UNLAYERED rule beats every layered
+   one regardless of specificity — so a bare `a { color: var(--acc) }` quietly
+   overrode `text-[var(--onacc)]` on the header button and painted blue text
+   on a blue fill. Layering these puts element defaults back underneath the
+   utilities that are supposed to override them. */
+@layer base {
+  /* 14px root, as on trapstreet. It is most of what makes those pages read
+     dense rather than roomy, and every rem-based utility here follows it. */
+  html,
+  body {
+    background: var(--bg);
+    color: var(--body);
+    font-family: var(--stack-sans);
+    font-size: 14px;
+    line-height: 1.55;
+  }
+
+  code,
+  kbd,
+  pre,
+  samp,
+  table {
+    font-family: var(--stack-mono);
+  }
+
+  a {
+    color: var(--acc);
+  }
+  a:hover {
+    text-decoration: underline;
+  }
+}

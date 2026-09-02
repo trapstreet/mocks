@@ -171,7 +171,7 @@ export function ArenaRunner({ seed, hops }: { seed: number; hops: number }) {
                   </span>
                 )}
                 {s.kind === "answer" && (
-                  <span className={s.correct ? "text-[var(--acc)]" : ""}>
+                  <span className={s.correct ? "text-[var(--ok)]" : "text-[var(--bad)]"}>
                     answered <span className="text-[var(--head)]">{s.answer}</span> ·{" "}
                     {s.correct ? "correct" : "wrong"}
                   </span>

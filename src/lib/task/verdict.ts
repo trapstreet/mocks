@@ -56,7 +56,9 @@ const isObj = (v: unknown): v is Record<string, unknown> =>
 
 const scalar = (v: unknown): string | null => {
   if (typeof v === "string") return v;
-  if (typeof v === "number") return Number.isInteger(v) ? String(v) : v.toFixed(2);
+  // toFixed pads: 28.1 became "28.10" beside a bare "50". Round, then let
+  // Number drop whatever trailing zeros the rounding created.
+  if (typeof v === "number") return String(Number(v.toFixed(2)));
   if (typeof v === "boolean") return v ? "yes" : "no";
   return null;
 };

@@ -39,6 +39,21 @@ if __name__ == "__main__":
         print(json.dumps({"passed": False, "score": 0.0, "error": "no scored cases"}))
 `;
 
+// Shape of every judge actually in trapstreet-tasks: a score and whatever
+// detail the task wants surfaced, and NO `passed` key. The fixture above
+// prints one, which is why reading `metrics.passed` looked correct in tests
+// while marking every real answer FAILED in the browser.
+const SCORE_ONLY_JUDGE = `import json
+import os
+from pathlib import Path
+
+if __name__ == "__main__":
+    manifest = json.loads(os.environ["TRAPTASK_MANIFEST"])
+    answer = Path(manifest["run"]["stdout"]).read_text().strip()
+    ok = answer.isdigit()
+    print(json.dumps({"score": 1.0 if ok else 0.4, "shape": "digits" if ok else "other"}))
+`;
+
 const bundle = (over: Partial<TaskBundle> = {}): TaskBundle => ({
   traptask: {
     inputsDir: "inputs",
@@ -200,3 +215,29 @@ if __name__ == "__main__":
     expect(good.judgeCase("car_wash_50m", "DRIVE").passed).toBe(true);
   });
 });
+
+describe("a judge that prints only a score", () => {
+  const scoreOnly = () =>
+    createJudgeRunner(py, bundle({ modules: { "judge.py": SCORE_ONLY_JUDGE } }));
+
+  // No judge in trapstreet-tasks prints `passed`. Requiring it marked a
+  // perfect answer FAILED on screen while the grader beside it said passed.
+  it("counts a perfect score as passed, the way the platform does", () => {
+    const r = scoreOnly().judgeCase("car_wash_50m", "42");
+    expect(r.score).toBe(1);
+    expect(r.passed).toBe(true);
+  });
+
+  // The platform counts a case passed only at exactly 1.0
+  // (cases_passed in src/lib/queries.ts), so partial credit is not a pass.
+  it("does not call partial credit a pass", () => {
+    const r = scoreOnly().judgeCase("car_wash_50m", "forty two");
+    expect(r.score).toBe(0.4);
+    expect(r.passed).toBe(false);
+  });
+
+  it("keeps the detail the judge surfaced", () => {
+    expect(scoreOnly().judgeCase("car_wash_50m", "42").metrics.shape).toBe("digits");
+  });
+});
+

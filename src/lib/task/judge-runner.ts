@@ -116,10 +116,19 @@ _stdout, sys.stdout = sys.stdout, io.StringIO()
         outputs: { case_stdout: stdoutPath, "case_meta.json": metaPath },
         expected: expectedPaths,
       });
+      const score = typeof metrics.score === "number" ? metrics.score : 0;
       return {
         case_id: caseId,
-        passed: metrics.passed === true,
-        score: typeof metrics.score === "number" ? metrics.score : 0,
+        // Judges do not print `passed` — none of the 53 in trapstreet-tasks
+        // does, they print `score` and their own detail. Reading a key that is
+        // never there marked every correct answer FAILED while the grader on
+        // the same screen said passed. The platform derives the same verdict
+        // from the same field (`cases_passed` counts cases whose score is
+        // exactly 1.0, src/lib/queries.ts), so this matches what a local run
+        // would report. An explicit `passed` still wins, for a judge that
+        // decides to print one.
+        passed: typeof metrics.passed === "boolean" ? metrics.passed : score === 1.0,
+        score,
         metrics,
       };
     },
