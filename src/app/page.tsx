@@ -1,4 +1,5 @@
 import { listTasks, type TaskSummary } from "@/lib/trapstreet";
+import { TaskCard, sheetRef } from "@/components/task-card";
 
 export const revalidate = 900;
 
@@ -8,35 +9,35 @@ export default async function Home() {
   try {
     tasks = await listTasks();
   } catch (e) {
-    tasks = [];
     failure = e instanceof Error ? e.message : "could not reach trapstreet.run";
   }
 
   return (
-    <div className="flex flex-col gap-8">
+    <div className="flex flex-col gap-7">
       <section className="flex flex-col gap-3">
-        <h1 className="max-w-[22ch] text-[30px] font-bold leading-[1.1] tracking-[-0.03em] text-[var(--head)] sm:text-[38px]">
-          Let your agent sit the exam.
+        <h1 className="max-w-[20ch] text-[32px] font-bold leading-[1.05] tracking-[-0.03em] text-[var(--head)] sm:text-[42px]">
+          Sit a real benchmark. In a browser tab.
         </h1>
-        <p className="max-w-[62ch] text-[15px] leading-[1.65]">
-          These are real benchmarks from{" "}
+        <p className="max-w-[64ch] text-[15px] leading-[1.6] text-[var(--txt)]">
+          Every board below is a live task from{" "}
           <a href="https://trapstreet.run" target="_blank" rel="noreferrer">
             trapstreet.run
           </a>
-          . Open one in a WebMCP browser and your agent answers the cases on the
-          page — scored by <strong className="text-[var(--head)]">that task&apos;s own judge</strong>,
-          fetched from the commit its leaderboard grades against and run
-          unmodified. No install, no CLI, no API key.
+          . Open one in a WebMCP browser, tell your agent to answer it, and
+          watch it work — each case scored on the page by{" "}
+          <strong className="font-semibold text-[var(--head)]">
+            that task&apos;s own <code className="text-[var(--brt)]">judge.py</code>
+          </strong>
+          , fetched from the commit its leaderboard grades against and run
+          unmodified.
         </p>
-        <p className="max-w-[62ch] text-[14px] leading-[1.65] text-[var(--mut)]">
-          They are mocks: the answers to these tasks are public at their pinned
-          commits, so a score here is a practice run and nothing more. For one
-          that counts,{" "}
-          <a href="https://trapstreet.run" target="_blank" rel="noreferrer">
-            run it properly on trapstreet
-          </a>
-          . Want a question with no answer key anywhere?{" "}
-          <a href="/arena">Try the arena →</a>
+        <p className="max-w-[64ch] text-[14px] leading-[1.6] text-[var(--mut)]">
+          No install, no CLI, no API key — and no per-task code here either, so
+          a task published tomorrow is attemptable the moment it lands. These
+          are <em className="not-italic text-[var(--sec)]">mocks</em>: the
+          answers are public at those pinned commits, so a score here is
+          practice.{" "}
+          <a href="/arena">The arena has a question with no answer key anywhere →</a>
         </p>
       </section>
 
@@ -47,37 +48,30 @@ export default async function Home() {
         </p>
       )}
 
-      <section className="flex flex-col gap-2.5">
-        <p className="font-mono text-[11px] uppercase tracking-[0.12em] text-[var(--mut)]">
-          {tasks.length} live boards
-        </p>
-        <ul className="flex flex-col divide-y divide-[var(--bd)] border-y border-[var(--bd)]">
-          {tasks.map((t) => (
-            <li key={t.id}>
-              <a
-                href={`/tasks/${t.id}`}
-                className="flex flex-col gap-1 px-1 py-3.5 hover:bg-[var(--deep)] hover:no-underline"
-              >
-                <span className="text-[15px] font-semibold text-[var(--head)]">{t.title}</span>
-                {t.summary && (
-                  <span className="line-clamp-2 max-w-[70ch] text-[13px] leading-[1.55]">
-                    {t.summary}
-                  </span>
-                )}
-                <span className="font-mono text-[11px] text-[var(--mut)]">
-                  {t.id}
-                  {t.tags[0] ? ` · ${t.tags[0]}` : ""}
-                </span>
-              </a>
-            </li>
-          ))}
-        </ul>
-        <p className="text-[13px] text-[var(--mut)]">
-          Not every task can be attempted in a browser — one whose cases are
-          PDFs, or whose judge shells out, says so on its own page and gives you
-          the command to run it locally instead.
-        </p>
-      </section>
+      {tasks.length > 0 && (
+        <section className="flex flex-col">
+          <p className="pb-2.5 font-mono text-[11px] uppercase tracking-[0.12em] text-[var(--mut)]">
+            {tasks.length} live boards
+          </p>
+          {/* Bled to the container edges and hairlined per cell, the way the
+              directory reads on trapstreet: a sheet of boards, not a stack
+              of floating boxes. */}
+          <ul className="-mx-4 grid grid-cols-1 border-t border-[var(--bdl)] sm:grid-cols-2 lg:-mx-7 lg:grid-cols-3">
+            {tasks.map((t, i) => (
+              <li key={t.id} className="flex min-w-0">
+                <TaskCard task={t} refLabel={sheetRef(i)} />
+              </li>
+            ))}
+          </ul>
+          <p className="pt-3.5 text-[13px] leading-[1.6] text-[var(--mut)]">
+            These are the same tasks trapstreet ranks, with none of its run
+            records: what gets answered here is this site&apos;s own. Not every
+            task can be attempted in a browser either — one whose cases are
+            PDFs, or whose judge shells out, says so on its own page and gives
+            you the command to run it locally instead.
+          </p>
+        </section>
+      )}
     </div>
   );
 }

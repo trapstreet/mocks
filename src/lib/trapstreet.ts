@@ -14,6 +14,7 @@ export interface TaskSummary {
   tags: string[];
   pin: TaskPin;
   rankingMetric: string;
+  rankingDirection: string;
 }
 
 /** Ids reach fetch paths, so they are checked before they get there. */
@@ -47,6 +48,7 @@ function toSummary(raw: Record<string, unknown>): TaskSummary | null {
       repo_path: typeof latest.repo_path === "string" ? latest.repo_path : "",
     },
     rankingMetric: String(latest.ranking_metric ?? "score"),
+    rankingDirection: String(latest.ranking_direction ?? "desc"),
   };
 }
 
@@ -82,7 +84,10 @@ export async function getTask(
 
 export interface BoardEntry {
   rank: number;
-  score: number;
+  // Optional because the board is someone else's JSON: an unranked board can
+  // carry entries with no score at all, and a type that promised one would
+  // have this site printing `undefined.toFixed`.
+  score?: number;
   display_name?: string;
   models?: string[];
 }
