@@ -38,6 +38,12 @@ export interface RunRow {
   cases_passed: number;
   user_login: string | null;
   started_at: string;
+  /**
+   * The judge's metrics for this run's first case. Carried because on a task
+   * that grades format only — MBTI scores 1.0 for anything well-formed — the
+   * score column says nothing and the derived result is the whole point.
+   */
+  metrics: Record<string, unknown> | null;
 }
 
 /** An answer is kept for reading, not for replay; the full text is unbounded. */
@@ -75,13 +81,28 @@ export async function recordRun(db: Sql, run: NewRun): Promise<string> {
   return id;
 }
 
+// Postgres timestamps arrive from the driver as Date objects, not as the
+// strings RunRow promises. Left alone the lie surfaced downstream as
+// `b.latest.localeCompare is not a function` — and only once a second
+// configuration existed, because a one-element sort never calls its
+// comparator. Normalised here, at the one place rows enter the program.
+function isoTime(value: unknown): string {
+  if (value instanceof Date) return value.toISOString();
+  if (typeof value === "string") return value;
+  return new Date(String(value)).toISOString();
+}
+
 export async function runsForTask(db: Sql, taskId: string, limit = 100): Promise<RunRow[]> {
-  return (await db`
-    select id, task_id, task_commit, persona, score, passed,
-           cases_total, cases_passed, user_login, started_at
-      from runs
-     where task_id = ${taskId}
-     order by started_at desc
+  const rows = (await db`
+    select r.id, r.task_id, r.task_commit, r.persona, r.score, r.passed,
+           r.cases_total, r.cases_passed, r.user_login, r.started_at,
+           (select c.metrics from run_cases c
+             where c.run_id = r.id order by c.case_id limit 1) as metrics
+      from runs r
+     where r.task_id = ${taskId}
+     order by r.started_at desc
      limit ${limit}
-  `) as unknown as RunRow[];
+  `) as unknown as Array<Omit<RunRow, "started_at"> & { started_at: unknown }>;
+
+  return rows.map((r) => ({ ...r, started_at: isoTime(r.started_at) }));
 }

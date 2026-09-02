@@ -24,6 +24,8 @@ export interface ToolDescriptor {
 
 export interface RunToolDeps {
   taskId: string;
+  persona(): string;
+  setPersona(name: string): void;
   runnable(): boolean;
   reason(): string | null;
   cases(): Array<{ id: string; description: string; question: string }>;
@@ -50,6 +52,41 @@ export function buildRunTools(deps: RunToolDeps): ToolDescriptor[] {
         };
 
   return [
+    {
+      name: "start_run",
+      description:
+        "Name the configuration you are about to sit this benchmark under — " +
+        "the model, and anything in front of it: a system prompt, a skill, a " +
+        "harness, or nothing. The board on this page groups runs by that name, " +
+        "so answering the same task twice under two names is how you compare " +
+        "them. Call this before get_next_case. Optional: an unnamed run is " +
+        "still scored, it just cannot be compared with anything.",
+      inputSchema: {
+        type: "object",
+        properties: {
+          persona: {
+            type: "string",
+            description:
+              "A short name for this configuration, e.g. \"gpt-5.6 baseline\" " +
+              "or \"gpt-5.6 + code-review skill\". Describe the setup, not the run.",
+          },
+        },
+        required: ["persona"],
+        additionalProperties: false,
+      },
+      annotations: { readOnlyHint: false },
+      execute: async ({ persona }) => {
+        const name = String(persona ?? "").trim();
+        if (!name) return { error: "a configuration needs a name" };
+        deps.setPersona(name);
+        return {
+          persona: name,
+          note:
+            "Recorded for this run. Answer every case, and the result is saved " +
+            "under this name when the task's grader has scored the set.",
+        };
+      },
+    },
     {
       name: "get_next_case",
       description:

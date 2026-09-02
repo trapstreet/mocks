@@ -81,9 +81,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             <div className="flex w-full flex-wrap items-baseline justify-between gap-x-6 gap-y-2 px-4 py-4 font-mono text-[12px] leading-[1.7] text-[var(--mut)] lg:px-7">
               <p className="font-semibold text-[var(--sec)]">mocks</p>
               <p className="max-w-[62ch]">
-                Mock exams. Nothing here counts — attempts are not submitted
-                anywhere, and the answers to the real tasks are public at their
-                pinned commits.{" "}
+                Mock exams. Attempts are recorded here and nowhere else, and
+                the answers to these tasks are public at their pinned commits,
+                so a score here is practice.{" "}
                 <a href="https://trapstreet.run" target="_blank" rel="noreferrer">
                   For evaluation that counts, run it on trapstreet.run →
                 </a>

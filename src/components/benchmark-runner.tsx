@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import { buildRunTools } from "@/lib/task/run-tools";
 import { traceRunTools, abbreviate, type TraceStep } from "@/lib/task/trace";
 import { VerdictPanel } from "./verdict-panel";
@@ -33,6 +34,7 @@ declare global {
 }
 
 export function BenchmarkRunner({ taskId }: { taskId: string }) {
+  const router = useRouter();
   const [payload, setPayload] = useState<Payload | null>(null);
   const [phase, setPhase] = useState<Phase>("loading");
   const [failure, setFailure] = useState<string | null>(null);
@@ -52,6 +54,11 @@ export function BenchmarkRunner({ taskId }: { taskId: string }) {
   // answered" to a verdict and the middle of the run is invisible — which is
   // most of the reason to sit a benchmark in a browser rather than a terminal.
   const [steps, setSteps] = useState<TraceStep[]>([]);
+  // The A/B axis: what this agent was running under. Typed here, or named by
+  // the agent itself through start_run. Without one a run is still scored —
+  // it just has nothing to be compared against, so it is not recorded.
+  const [persona, setPersona] = useState("");
+  const [saved, setSaved] = useState<null | { ok: boolean; detail: string }>(null);
   const [hasAgent, setHasAgent] = useState(false);
   const push = useCallback((s: TraceStep) => setSteps((prev) => [...prev, s]), []);
 
@@ -59,8 +66,13 @@ export function BenchmarkRunner({ taskId }: { taskId: string }) {
   // state of the render that registered them.
   const payloadRef = useRef<Payload | null>(null);
   const resultsRef = useRef<CaseResult[]>([]);
+  const personaRef = useRef("");
+  // What was actually submitted per case. The results carry the verdict, not
+  // the answer, and the board keeps both.
+  const answersRef = useRef<Record<string, string>>({});
   payloadRef.current = payload;
   resultsRef.current = results;
+  personaRef.current = persona;
 
   useEffect(() => {
     let cancelled = false;
@@ -124,6 +136,7 @@ export function BenchmarkRunner({ taskId }: { taskId: string }) {
       try {
         const runner = await judgeRunner();
         const result = runner.judgeCase(caseId, answer);
+        answersRef.current[caseId] = answer;
         const next = [...resultsRef.current.filter((r) => r.case_id !== caseId), result];
         resultsRef.current = next;
         setResults(next);
@@ -135,12 +148,65 @@ export function BenchmarkRunner({ taskId }: { taskId: string }) {
     [judgeRunner],
   );
 
+  // Recording happens here rather than in either caller, because answering by
+  // tool and answering by hand are the same run and must be saved the same
+  // way. It is deliberately not awaited by the tool: an agent should get its
+  // verdict back whether or not this site's board is reachable.
+  const record = useCallback(
+    async (final: { passed: boolean; score: number }) => {
+      const bundle = payloadRef.current;
+      const name = personaRef.current.trim();
+      if (!bundle) return;
+      if (!name) {
+        const detail = "not recorded — name the configuration to put it on the board";
+        setSaved({ ok: false, detail });
+        push({ kind: "recorded", ok: false, detail });
+        return;
+      }
+      try {
+        const res = await fetch("/api/runs", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({
+            task_id: bundle.task.id,
+            task_commit: bundle.task.commit_sha,
+            persona: name,
+            score: final.score,
+            passed: final.passed,
+            cases: resultsRef.current.map((r) => ({
+              case_id: r.case_id,
+              passed: r.passed,
+              score: r.score,
+              answer: answersRef.current[r.case_id] ?? "",
+              metrics: r.metrics,
+            })),
+          }),
+        });
+        const body = (await res.json()) as { error?: string };
+        const detail = res.ok
+          ? `recorded as "${name}"`
+          : `not recorded — ${body.error ?? res.status}`;
+        setSaved({ ok: res.ok, detail });
+        push({ kind: "recorded", ok: res.ok, detail });
+        // The board below is server-rendered; without this the run that was
+        // just recorded is missing from it until someone reloads.
+        if (res.ok) router.refresh();
+      } catch (e) {
+        const detail = `not recorded — ${e instanceof Error ? e.message : "the board is unreachable"}`;
+        setSaved({ ok: false, detail });
+        push({ kind: "recorded", ok: false, detail });
+      }
+    },
+    [push, router],
+  );
+
   const grade = useCallback(async () => {
     const runner = await judgeRunner();
     const out = runner.grade(resultsRef.current);
     setFinal(out);
+    void record(out);
     return out;
-  }, [judgeRunner]);
+  }, [judgeRunner, record]);
 
   // WebMCP registration. Inert in every browser that has no modelContext,
   // which today is all of them except ChatGPT's and Chrome behind a flag.
@@ -158,11 +224,13 @@ export function BenchmarkRunner({ taskId }: { taskId: string }) {
 
     const tools = traceRunTools(
       buildRunTools({
-      taskId,
-      runnable: () => payloadRef.current?.runnable === true,
-      reason: () => payloadRef.current?.reason ?? null,
-      cases: () => payloadRef.current?.cases ?? [],
-      results: () => resultsRef.current,
+        taskId,
+        persona: () => personaRef.current,
+        setPersona,
+        runnable: () => payloadRef.current?.runnable === true,
+        reason: () => payloadRef.current?.reason ?? null,
+        cases: () => payloadRef.current?.cases ?? [],
+        results: () => resultsRef.current,
         judge,
         grade,
       }),
@@ -199,8 +267,10 @@ export function BenchmarkRunner({ taskId }: { taskId: string }) {
           An agent with WebMCP can answer these cases on this page. Answers are
           scored by <strong>this task&apos;s own judge</strong>, fetched from the
           commit the leaderboard grades against and run unmodified — no
-          reimplementation, no approximation. Nothing here is submitted anywhere: a
-          run with no provenance does not belong on a board.
+          reimplementation, no approximation. What you answer goes on{" "}
+          <em className="not-italic text-[var(--sec)]">this site&apos;s</em> board,
+          under the configuration you name — never on trapstreet&apos;s, where a
+          run with no provenance does not belong.
         </p>
       </header>
 
@@ -237,7 +307,32 @@ export function BenchmarkRunner({ taskId }: { taskId: string }) {
               </span>
             )}
             {python === "loading" && <span>loading Python…</span>}
+            {saved && (
+              <span className={saved.ok ? "text-[var(--ok)]" : "text-[var(--mut)]"}>
+                {saved.detail}
+              </span>
+            )}
           </div>
+
+          <label className="flex flex-col gap-1.5">
+            <span className="font-mono text-[11px] uppercase tracking-[0.12em] text-[var(--mut)]">
+              configuration
+            </span>
+            <input
+              value={persona}
+              onChange={(e) => setPersona(e.target.value)}
+              maxLength={60}
+              spellCheck={false}
+              placeholder="e.g. gpt-5.6 baseline — or let the agent name it with start_run"
+              className="w-full max-w-[52ch] border border-[var(--bd)] bg-[var(--deep)] p-2 font-mono text-[12px] text-[var(--sec)] focus:border-[var(--btn)] focus:outline-none"
+            />
+            <span className="max-w-[62ch] text-[12px] leading-[1.55] text-[var(--mut)]">
+              The board groups runs by this name, so sitting the same task
+              twice under two names is how you compare them. Leave it empty and
+              the run is still scored — it just is not recorded, because there
+              is nothing to compare it with.
+            </span>
+          </label>
 
           <div className="flex flex-col gap-2">
             <p className="font-mono text-[11px] uppercase tracking-[0.12em] text-[var(--mut)]">
@@ -254,6 +349,16 @@ export function BenchmarkRunner({ taskId }: { taskId: string }) {
                 {steps.map((s, i) => (
                   <li key={i} className="flex gap-2.5 text-[var(--sec)]">
                     <span className="text-[var(--mut)]">{String(i + 1).padStart(2, "0")}</span>
+                    {s.kind === "persona" && (
+                      <span>
+                        running as <span className="text-[var(--head)]">{s.persona}</span>
+                      </span>
+                    )}
+                    {s.kind === "recorded" && (
+                      <span className={s.ok ? "text-[var(--ok)]" : "text-[var(--mut)]"}>
+                        {s.detail}
+                      </span>
+                    )}
                     {s.kind === "fetch" && (
                       <span>
                         took case <span className="text-[var(--head)]">{s.caseId}</span> · {s.index}/

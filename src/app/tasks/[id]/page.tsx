@@ -3,6 +3,7 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { getTask } from "@/lib/trapstreet";
 import { BenchmarkRunner } from "@/components/benchmark-runner";
+import { RunBoard } from "@/components/run-board";
 
 export async function generateMetadata({
   params,
@@ -49,6 +50,7 @@ export default async function TaskPage({ params }: { params: Promise<{ id: strin
         )}
       </header>
       <BenchmarkRunner taskId={task.id} />
+      <RunBoard taskId={task.id} />
     </div>
   );
 }

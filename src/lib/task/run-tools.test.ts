@@ -8,8 +8,13 @@ const CASES = [
 
 function deps(over: Partial<RunToolDeps> = {}): RunToolDeps {
   const results: Array<{ case_id: string; passed: boolean; score: number }> = [];
+  let persona = "";
   return {
     taskId: "karpathys-jagged-questions",
+    persona: () => persona,
+    setPersona: (name: string) => {
+      persona = name;
+    },
     runnable: () => true,
     reason: () => null,
     cases: () => CASES,
@@ -119,9 +124,14 @@ describe("submit_answer", () => {
 });
 
 describe("tool descriptors", () => {
-  it("declares both tools with closed schemas", () => {
+  it("declares every tool with a closed schema", () => {
     const tools = buildRunTools(deps());
-    expect(tools.map((t) => t.name)).toEqual(["get_next_case", "submit_answer"]);
+    // start_run comes first because it is what an agent should call first.
+    expect(tools.map((t) => t.name)).toEqual([
+      "start_run",
+      "get_next_case",
+      "submit_answer",
+    ]);
     for (const t of tools) {
       expect(t.description.length).toBeGreaterThan(20);
       expect(t.inputSchema.additionalProperties).toBe(false);
@@ -132,5 +142,36 @@ describe("tool descriptors", () => {
     const d = deps();
     expect(tool(d, "get_next_case").annotations?.readOnlyHint).toBe(true);
     expect(tool(d, "submit_answer").annotations?.readOnlyHint).toBe(false);
+  });
+});
+
+describe("start_run", () => {
+  it("lets the agent name the configuration it is about to run under", async () => {
+    const d = deps();
+    const [start] = buildRunTools(d);
+
+    expect(start.name).toBe("start_run");
+    const out = (await start.execute({ persona: "gpt-5.6 + code-review skill" })) as {
+      persona: string;
+    };
+
+    expect(out.persona).toBe("gpt-5.6 + code-review skill");
+    expect(d.persona()).toBe("gpt-5.6 + code-review skill");
+  });
+
+  it("trims a padded name rather than starting a second configuration", async () => {
+    const d = deps();
+    await buildRunTools(d)[0].execute({ persona: "  baseline  " });
+    expect(d.persona()).toBe("baseline");
+  });
+
+  // An unnamed configuration cannot be compared with anything, which is the
+  // one thing the board is for.
+  it("refuses an empty name instead of recording a blank configuration", async () => {
+    const d = deps();
+    const out = (await buildRunTools(d)[0].execute({ persona: "   " })) as { error?: string };
+
+    expect(out.error).toMatch(/needs a name/);
+    expect(d.persona()).toBe("");
   });
 });

@@ -1,3 +1,4 @@
+import { summarizeVerdict } from "../task/verdict";
 import type { RunRow } from "./runs";
 
 // Turning a list of runs into the comparison the board exists to show.
@@ -24,6 +25,15 @@ export interface PersonaSummary {
   latest: string;
   /** Distinct signed-in names behind these runs; empty while sign-in is off. */
   people: string[];
+  /**
+   * What the judge derived, when a score cannot say it. The MBTI task grades
+   * format only and hands every well-formed answer a 1.0, so a board that
+   * showed scores alone would be a column of 1.00 next to two configurations
+   * that in fact produced different results. Taken from the most recent run
+   * of the configuration, and only for a single-case task, where one result
+   * belongs to the whole run.
+   */
+  result: { key: string; value: string } | null;
 }
 
 export function median(values: number[]): number | null {
@@ -31,6 +41,14 @@ export function median(values: number[]): number | null {
   const s = [...values].sort((a, b) => a - b);
   const mid = Math.floor(s.length / 2);
   return s.length % 2 ? s[mid] : (s[mid - 1] + s[mid]) / 2;
+}
+
+function headlineResult(rs: RunRow[]): { key: string; value: string } | null {
+  const latest = rs.reduce((a, r) => (r.started_at > a.started_at ? r : a), rs[0]);
+  if (latest.cases_total !== 1 || !latest.metrics) return null;
+  // Sorted by shape, exactly as the verdict panel does it — nothing here
+  // knows what an MBTI type is, only that the judge surfaced a scalar.
+  return summarizeVerdict(latest.metrics).facets[0] ?? null;
 }
 
 export function byPersona(rows: RunRow[]): PersonaSummary[] {
@@ -56,6 +74,7 @@ export function byPersona(rows: RunRow[]): PersonaSummary[] {
       worst: scored.length ? Math.min(...scored) : null,
       latest: rs.reduce((a, r) => (r.started_at > a ? r.started_at : a), rs[0].started_at),
       people: [...new Set(rs.map((r) => r.user_login).filter((n): n is string => !!n))],
+      result: headlineResult(rs),
     });
   }
 

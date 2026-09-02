@@ -13,6 +13,8 @@ import type { ToolDescriptor } from "./run-tools";
 // sees would be a trace that changes the run it is documenting.
 
 export type TraceStep =
+  | { kind: "persona"; persona: string }
+  | { kind: "recorded"; ok: boolean; detail: string }
   | { kind: "fetch"; caseId: string; index: number; total: number }
   | { kind: "exhausted"; answered: number; total: number }
   | { kind: "answer"; caseId: string; answer: string; passed: boolean; score: number }
@@ -40,6 +42,10 @@ function stepFor(
   // An error is a thing that happened and belongs on the trace: a run that
   // stalls because the agent kept being refused should look stalled, not idle.
   if (typeof o.error === "string") return { kind: "refused", tool, error: o.error };
+
+  if (tool === "start_run" && typeof o.persona === "string") {
+    return { kind: "persona", persona: o.persona };
+  }
 
   if (tool === "get_next_case") {
     if (o.done === true) {

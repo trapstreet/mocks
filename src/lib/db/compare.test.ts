@@ -14,6 +14,7 @@ const run = (over: Partial<RunRow>): RunRow => ({
   cases_passed: 5,
   user_login: null,
   started_at: "2026-09-02T10:00:00Z",
+  metrics: null,
   ...over,
 });
 
@@ -104,5 +105,50 @@ describe("byPersona", () => {
     ]);
 
     expect(out[0].people).toEqual(["ruqii"]);
+  });
+});
+
+describe("the headline result", () => {
+  // MBTI grades format only: every well-formed answer scores 1.0, so a board
+  // showing scores alone would be a column of 1.00 beside two configurations
+  // that produced genuinely different results.
+  it("surfaces what the judge derived when the score cannot tell them apart", () => {
+    const out = byPersona([
+      run({
+        persona: "baseline",
+        score: 1,
+        cases_total: 1,
+        metrics: { score: 1, mbti_type: "INFP" },
+      }),
+      run({
+        persona: "with-prompt",
+        score: 1,
+        cases_total: 1,
+        metrics: { score: 1, mbti_type: "ISFJ" },
+      }),
+    ]);
+
+    expect(out.map((c) => c.result?.value).sort()).toEqual(["INFP", "ISFJ"]);
+  });
+
+  it("takes the most recent run's result, not an older one", () => {
+    const out = byPersona([
+      run({ cases_total: 1, started_at: "2026-09-02T09:00:00Z", metrics: { mbti_type: "INFP" } }),
+      run({ cases_total: 1, started_at: "2026-09-02T11:00:00Z", metrics: { mbti_type: "ENTP" } }),
+    ]);
+
+    expect(out[0].result?.value).toBe("ENTP");
+  });
+
+  // On a task with many cases, one case's derived value does not describe the
+  // run; the score already does.
+  it("has no headline result for a multi-case task", () => {
+    const out = byPersona([run({ cases_total: 10, metrics: { mbti_type: "INFP" } })]);
+    expect(out[0].result).toBeNull();
+  });
+
+  it("has none when the judge surfaced nothing beyond a score", () => {
+    const out = byPersona([run({ cases_total: 1, metrics: { score: 1, passed: true } })]);
+    expect(out[0].result).toBeNull();
   });
 });
