@@ -1,0 +1,20 @@
+@import "tailwindcss";
+
+:root {
+  --bg: #0b0d12;
+  --deep: #10131a;
+  --bd: #1e2430;
+  --head: #f2f5fa;
+  --sec: #aab4c4;
+  --mut: #6b7688;
+  --acc: #5b9dff;
+}
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme="dark"]) {
+    --bg: #ffffff; --deep: #f6f8fb; --bd: #e2e7ef;
+    --head: #0d1017; --sec: #414b5c; --mut: #7d8798; --acc: #1f6feb;
+  }
+}
+body { background: var(--bg); color: var(--sec); }
+a { color: var(--acc); }
+a:hover { text-decoration: underline; }
