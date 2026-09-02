@@ -78,12 +78,15 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           </main>
 
           <footer className="border-t border-[var(--bd)]">
-            <div className="flex w-full flex-wrap items-baseline justify-between gap-x-6 gap-y-2 px-4 py-4 font-mono text-[12px] leading-[1.7] text-[var(--mut)] lg:px-7">
+            {/* justify-between pinned the wordmark left and threw the whole
+                sentence to the right rail, which read as a layout fault. The
+                footer is one left-aligned line of prose now. */}
+            <div className="flex w-full flex-col gap-1.5 px-4 py-4 font-mono text-[12px] leading-[1.7] text-[var(--mut)] lg:px-7">
               <p className="font-semibold text-[var(--sec)]">mocks</p>
-              <p className="max-w-[62ch]">
-                Mock exams. Attempts are recorded here and nowhere else, and
-                the answers to these tasks are public at their pinned commits,
-                so a score here is practice.{" "}
+              <p className="max-w-[80ch]">
+                Mock exams. Attempts are recorded here and nowhere else, and the
+                answers to these tasks are public at their pinned commits, so a
+                score here is practice.{" "}
                 <a href="https://trapstreet.run" target="_blank" rel="noreferrer">
                   For evaluation that counts, run it on trapstreet.run →
                 </a>

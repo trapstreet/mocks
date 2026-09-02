@@ -39,6 +39,7 @@ export async function GET(
       task: { id: task.id, title: task.title, summary: task.summary, ...task.pin },
       runnable: bundle.runnable,
       reason: bundle.reason,
+      alternative: bundle.alternative,
       cases: bundle.cases,
       modules: bundle.modules,
       expected: bundle.expected,

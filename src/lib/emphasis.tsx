@@ -62,13 +62,18 @@ export function emphasise(text: string, depth = 0): ReactNode {
       );
     } else if (linkText) {
       const safe = /^https?:\/\//i.test(url ?? "");
+      // The live summaries nest the other way round from what this first
+      // handled: `[**Minecraft**](url)` is a link whose TEXT is bold, not bold
+      // wrapping a link. Rendering the link text raw put asterisks on the
+      // page, so the inside is parsed here too.
+      const inner = depth < MAX_NESTING ? emphasise(linkText, depth + 1) : linkText;
       out.push(
         safe ? (
           <a key={at} href={url} target="_blank" rel="noreferrer">
-            {linkText}
+            {inner}
           </a>
         ) : (
-          <Fragment key={at}>{linkText}</Fragment>
+          <Fragment key={at}>{inner}</Fragment>
         ),
       );
     }

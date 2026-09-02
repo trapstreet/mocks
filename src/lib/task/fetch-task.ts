@@ -24,6 +24,7 @@ export interface TaskBundle {
   expected: Record<string, Record<string, string>>;
   runnable: boolean;
   reason: string | null;
+  alternative?: { label: string; href: string };
   /** Pyodide packages the judge needs loaded before it can run. */
   packages: string[];
 }
@@ -145,6 +146,9 @@ export async function fetchTaskBundle(
     expected,
     runnable: verdict.runnable,
     reason: verdict.runnable ? null : verdict.reason,
+    ...(verdict.runnable || !verdict.alternative
+      ? {}
+      : { alternative: verdict.alternative }),
     packages: verdict.runnable ? verdict.packages : [],
   };
 }

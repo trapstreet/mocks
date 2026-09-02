@@ -1,5 +1,6 @@
 import { listTasks, type TaskSummary } from "@/lib/trapstreet";
 import { TaskCard, sheetRef } from "@/components/task-card";
+import { fetchTaskSize, type TaskSize } from "@/lib/task/size";
 
 export const revalidate = 900;
 
@@ -12,11 +13,17 @@ export default async function Home() {
     failure = e instanceof Error ? e.message : "could not reach trapstreet.run";
   }
 
+  // One small file per task, fetched together. A failure costs that card its
+  // case count and nothing else.
+  const sizes: Array<TaskSize | null> = await Promise.all(
+    tasks.map((t) => fetchTaskSize(t.pin, (url) => fetch(url))),
+  );
+
   return (
     <div className="flex flex-col gap-7">
       <section className="flex flex-col gap-3">
-        <h1 className="max-w-[20ch] text-[32px] font-bold leading-[1.05] tracking-[-0.03em] text-[var(--head)] sm:text-[42px]">
-          Sit a real benchmark. In a browser tab.
+        <h1 className="text-[30px] font-bold leading-[1.05] tracking-[-0.03em] text-[var(--head)] sm:text-[40px]">
+          Sit a real benchmark in a browser tab.
         </h1>
         <p className="max-w-[64ch] text-[15px] leading-[1.6] text-[var(--txt)]">
           Every board below is a live task from{" "}
@@ -59,16 +66,19 @@ export default async function Home() {
           <ul className="-mx-4 grid grid-cols-1 border-t border-[var(--bdl)] sm:grid-cols-2 lg:-mx-7 lg:grid-cols-3">
             {tasks.map((t, i) => (
               <li key={t.id} className="flex min-w-0">
-                <TaskCard task={t} refLabel={sheetRef(i)} />
+                <TaskCard task={t} size={sizes[i] ?? null} refLabel={sheetRef(i)} />
               </li>
             ))}
           </ul>
           <p className="pt-3.5 text-[13px] leading-[1.6] text-[var(--mut)]">
             These are the same tasks trapstreet ranks, with none of its run
-            records: what gets answered here is this site&apos;s own. Not every
-            task can be attempted in a browser either — one whose cases are
-            PDFs, or whose judge shells out, says so on its own page and gives
-            you the command to run it locally instead.
+            records: what gets answered here is this site&apos;s own. The case
+            count is how long a sitting is — a board marked{" "}
+            <span className="font-mono text-[var(--warn)]">long</span> is an
+            afternoon in a chat window, not a try. Not every task can be
+            attempted in a browser either: one whose cases are PDFs, whose judge
+            shells out, or whose judge grades a self-report says so on its own
+            page and points you somewhere it can be done properly.
           </p>
         </section>
       )}

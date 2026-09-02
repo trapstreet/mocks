@@ -287,9 +287,19 @@ export function BenchmarkRunner({ taskId }: { taskId: string }) {
           <p className="text-[14px] leading-[1.6] text-[var(--sec)]">
             This one cannot be attempted in a browser — {payload?.reason}.
           </p>
-          <p className="mt-2 text-[14px] text-[var(--mut)]">
-            It still runs locally.{" "}
-            <a href="https://trapstreet.run/docs/quickstart" target="_blank" rel="noreferrer">Install the CLI and run it properly on trapstreet →</a>
+          <p className="mt-2 text-[14px] leading-[1.6] text-[var(--mut)]">
+            It still runs properly elsewhere.{" "}
+            {payload?.alternative && (
+              <>
+                <a href={payload.alternative.href} target="_blank" rel="noreferrer">
+                  {payload.alternative.label} →
+                </a>
+                {" · "}
+              </>
+            )}
+            <a href="https://trapstreet.run/docs/quickstart" target="_blank" rel="noreferrer">
+              Install the CLI and run it on trapstreet →
+            </a>
           </p>
         </div>
       )}

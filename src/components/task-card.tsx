@@ -1,4 +1,5 @@
 import { stripInlineMarkdown } from "@/lib/emphasis";
+import type { TaskSize } from "@/lib/task/size";
 import type { TaskSummary } from "@/lib/trapstreet";
 
 // Directory card, following trapstreet's: a cell in a hairline grid, not a
@@ -11,7 +12,15 @@ import type { TaskSummary } from "@/lib/trapstreet";
 // printed here would read as this site's number. So every card sits in the
 // open-board state — dimmed, offering the attempt — which is exactly what
 // these boards are until someone answers one here.
-export function TaskCard({ task, refLabel }: { task: TaskSummary; refLabel: string }) {
+export function TaskCard({
+  task,
+  size,
+  refLabel,
+}: {
+  task: TaskSummary;
+  size: TaskSize | null;
+  refLabel: string;
+}) {
   const ranked = task.rankingMetric !== "none";
   const summary = task.summary ? stripInlineMarkdown(task.summary) : "";
 
@@ -46,8 +55,16 @@ export function TaskCard({ task, refLabel }: { task: TaskSummary; refLabel: stri
         </span>
       )}
 
-      <span className="mt-auto border-t border-[var(--bdl)] pt-2.5 font-mono text-[13px] text-[var(--accT)] sm:pt-3">
-        sit it →
+      <span className="mt-auto flex items-baseline justify-between gap-3 border-t border-[var(--bdl)] pt-2.5 font-mono text-[13px] sm:pt-3">
+        <span className="text-[var(--accT)]">sit it →</span>
+        {size && (
+          // A board with 108 cases is an afternoon in a chat window. The card
+          // said nothing about that until someone had already opened it.
+          <span className={size.long ? "text-[var(--warn)]" : "text-[var(--mut)]"}>
+            {size.cases} {size.cases === 1 ? "case" : "cases"}
+            {size.long ? " · long" : ""}
+          </span>
+        )}
       </span>
     </a>
   );

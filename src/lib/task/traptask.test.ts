@@ -87,6 +87,31 @@ describe("assessRunnable", () => {
     expect(why).toMatch(/claim, not a result/);
   });
 
+  // Turning a task away without saying where it CAN be done leaves a dead
+  // end on the page. The refusal carries the destination, because the rule
+  // that refused is the only thing that knows why.
+  it("sends a self-report task to a harness that actually plays it", () => {
+    const r = assessRunnable({
+      ...base,
+      judgeSrc: base.judgeSrc + 'if not outcome.get("video"):\n    return 0.0\n',
+    });
+
+    expect(r.runnable).toBe(false);
+    if (r.runnable) return;
+    expect(r.alternative?.href).toMatch(/^https:\/\/github\.com\//);
+    expect(r.alternative?.label).toMatch(/watch live/);
+  });
+
+  it("attaches no destination to a refusal that has none", () => {
+    const r = assessRunnable({
+      ...base,
+      judgeSrc: 'import json\nresult = open("outputs/answer.json").read()\n',
+    });
+    expect(r.runnable).toBe(false);
+    if (r.runnable) return;
+    expect(r.alternative).toBeUndefined();
+  });
+
   // The rule keys on the judge asking for evidence, not on the word appearing
   // anywhere — a task about video content is still gradable here.
   it("does not refuse a judge that merely mentions video in prose", () => {

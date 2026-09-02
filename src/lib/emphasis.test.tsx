@@ -79,6 +79,18 @@ describe("emphasise", () => {
     expect(container.textContent).toBe("play Minecraft now");
   });
 
+  // The live Minecraft summary nests THIS way round — a link whose text is
+  // bold — and rendering the link text raw put asterisks on the page.
+  it("renders bold nested inside a link as both", () => {
+    const { container } = render(
+      <p>{emphasise("play [**Minecraft**](https://x.test/mc) now")}</p>,
+    );
+
+    expect(container.textContent).toBe("play Minecraft now");
+    const a = container.querySelector("a") as HTMLAnchorElement;
+    expect(a.querySelector("strong")?.textContent).toBe("Minecraft");
+  });
+
   it("keeps the surrounding prose in order", () => {
     const { container } = render(<p>{emphasise("before **middle** after")}</p>);
     expect(container.textContent).toBe("before middle after");

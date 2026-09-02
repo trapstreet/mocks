@@ -69,7 +69,17 @@ export function assessRunnable(input: {
   localModules?: string[];
 }):
   | { runnable: true; packages: string[] }
-  | { runnable: false; reason: string } {
+  | {
+      runnable: false;
+      reason: string;
+      /**
+       * Where this one CAN be done. Attached to the refusal rather than
+       * decided in the component: the rule that turns a task away is the only
+       * thing that knows why, and so the only thing that knows what would
+       * work instead. It is keyed to the class of refusal, not to a task id.
+       */
+      alternative?: { label: string; href: string };
+    } {
   const { traptask, judgeSrc, inputFiles, localModules = [] } = input;
 
   // An agent in a browser can produce text and nothing else. The question is
@@ -94,6 +104,13 @@ export function assessRunnable(input: {
         "its judge trusts what the solution reports about itself and asks for a " +
         "video of the run as proof — an attempt typed into a page would be a " +
         "claim, not a result",
+      // A judge that wants a film of a run wants something a harness that
+      // actually plays can give it. This one exposes one game action per
+      // tool and shows you the world through the bot's eyes while it works.
+      alternative: {
+        label: "dsh-minecraft plays it for real, and lets you watch live",
+        href: "https://github.com/Ruqii/dsh-minecraft",
+      },
     };
   }
 
