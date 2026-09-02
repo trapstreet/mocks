@@ -9,9 +9,13 @@ against and run unmodified in Pyodide.
 No install, no CLI, no API key. Built for the
 [OpenAI WebMCP Challenge](https://openai.com/webmcp-challenge/).
 
-They are *mocks*: nothing here is submitted anywhere, and the answers to the
-real tasks are public at their pinned commits. For evaluation that counts,
-run it properly on trapstreet.
+**Live at [mocks.trapstreet.run](https://mocks.trapstreet.run).**
+
+They are *mocks*: the answers to these tasks are public at their pinned
+commits, so a score here is practice. What gets answered is recorded on **this
+site's** board, under a configuration you name — never on trapstreet's, where a
+run with no provenance does not belong. For evaluation that counts, run it
+properly on trapstreet.
 
 ## Two kinds of exam
 
