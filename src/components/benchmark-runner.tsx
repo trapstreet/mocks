@@ -2,6 +2,8 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { buildRunTools } from "@/lib/task/run-tools";
+import { traceRunTools, abbreviate, type TraceStep } from "@/lib/task/trace";
+import { VerdictPanel } from "./verdict-panel";
 import { createJudgeRunner, type CaseResult, type PyRuntime } from "@/lib/task/judge-runner";
 import { PYODIDE_INDEX_URL } from "@/lib/pyodide-cdn";
 import type { TaskBundle } from "@/lib/task/fetch-task";
@@ -46,6 +48,12 @@ export function BenchmarkRunner({ taskId }: { taskId: string }) {
   // rather than letting it surface as an unhandled rejection and scoring
   // nothing.
   const [caseError, setCaseError] = useState<Record<string, string>>({});
+  // What the agent did, in order. Without it the page jumps from "0/1
+  // answered" to a verdict and the middle of the run is invisible — which is
+  // most of the reason to sit a benchmark in a browser rather than a terminal.
+  const [steps, setSteps] = useState<TraceStep[]>([]);
+  const [hasAgent, setHasAgent] = useState(false);
+  const push = useCallback((s: TraceStep) => setSteps((prev) => [...prev, s]), []);
 
   // Tool closures are registered once and must see live state, not the
   // state of the render that registered them.
@@ -139,6 +147,7 @@ export function BenchmarkRunner({ taskId }: { taskId: string }) {
   useEffect(() => {
     const mc = document.modelContext;
     if (typeof mc?.registerTool !== "function") return;
+    setHasAgent(true);
 
     const controller = new AbortController();
     const undo: Array<() => void> = [];
@@ -147,15 +156,18 @@ export function BenchmarkRunner({ taskId }: { taskId: string }) {
       undo.splice(0).forEach((fn) => fn());
     };
 
-    const tools = buildRunTools({
+    const tools = traceRunTools(
+      buildRunTools({
       taskId,
       runnable: () => payloadRef.current?.runnable === true,
       reason: () => payloadRef.current?.reason ?? null,
       cases: () => payloadRef.current?.cases ?? [],
       results: () => resultsRef.current,
-      judge,
-      grade,
-    });
+        judge,
+        grade,
+      }),
+      push,
+    );
 
     void (async () => {
       try {
@@ -170,7 +182,7 @@ export function BenchmarkRunner({ taskId }: { taskId: string }) {
     })();
 
     return teardown;
-  }, [taskId, judge, grade]);
+  }, [taskId, judge, grade, push]);
 
   const cases = payload?.cases ?? [];
   const byId = new Map(results.map((r) => [r.case_id, r]));
@@ -227,6 +239,54 @@ export function BenchmarkRunner({ taskId }: { taskId: string }) {
             {python === "loading" && <span>loading Python…</span>}
           </div>
 
+          <div className="flex flex-col gap-2">
+            <p className="font-mono text-[11px] uppercase tracking-[0.12em] text-[var(--mut)]">
+              what the agent did {steps.length > 0 && `· ${steps.length} steps`}
+            </p>
+            {steps.length === 0 ? (
+              <p className="font-mono text-[12px] leading-[1.6] text-[var(--mut)]">
+                {hasAgent
+                  ? "nothing yet — ask your agent to sit this benchmark"
+                  : "this browser has no WebMCP, so no tools are registered. Open the page in ChatGPT’s built-in browser and ask it to answer — every call will appear here. You can also answer by hand below."}
+              </p>
+            ) : (
+              <ol className="flex flex-col gap-1.5 font-mono text-[12px]">
+                {steps.map((s, i) => (
+                  <li key={i} className="flex gap-2.5 text-[var(--sec)]">
+                    <span className="text-[var(--mut)]">{String(i + 1).padStart(2, "0")}</span>
+                    {s.kind === "fetch" && (
+                      <span>
+                        took case <span className="text-[var(--head)]">{s.caseId}</span> · {s.index}/
+                        {s.total}
+                      </span>
+                    )}
+                    {s.kind === "answer" && (
+                      <span className={s.passed ? "text-[var(--acc)]" : ""}>
+                        answered <span className="text-[var(--head)]">{s.answer}</span> ·{" "}
+                        {s.passed ? "passed" : "failed"}
+                      </span>
+                    )}
+                    {s.kind === "graded" && (
+                      <span className="text-[var(--head)]">
+                        grader scored the set · {s.score.toFixed(3)}
+                      </span>
+                    )}
+                    {s.kind === "exhausted" && (
+                      <span>
+                        no cases left · {s.answered}/{s.total} answered
+                      </span>
+                    )}
+                    {s.kind === "refused" && (
+                      <span className="text-[var(--mut)]">
+                        {s.tool} refused · {s.error}
+                      </span>
+                    )}
+                  </li>
+                ))}
+              </ol>
+            )}
+          </div>
+
           <ol className="flex flex-col gap-3">
             {cases.map((c, i) => {
               const r = byId.get(c.id);
@@ -252,9 +312,22 @@ export function BenchmarkRunner({ taskId }: { taskId: string }) {
                     onSubmit={(e) => {
                       e.preventDefault();
                       setCaseError((m) => ({ ...m, [c.id]: "" }));
-                      void judge(c.id, drafts[c.id] ?? "")
-                        .then(() => {
-                          if (resultsRef.current.length >= cases.length) return grade();
+                      const typed = drafts[c.id] ?? "";
+                      void judge(c.id, typed)
+                        .then(async (r) => {
+                          // Answering by hand is the same run as answering by
+                          // tool, so it belongs on the same trace.
+                          push({
+                            kind: "answer",
+                            caseId: c.id,
+                            answer: abbreviate(typed),
+                            passed: r.passed,
+                            score: r.score,
+                          });
+                          if (resultsRef.current.length >= cases.length) {
+                            const fin = await grade();
+                            push({ kind: "graded", passed: fin.passed, score: fin.score });
+                          }
                         })
                         .catch((err: unknown) =>
                           setCaseError((m) => ({
@@ -282,6 +355,7 @@ export function BenchmarkRunner({ taskId }: { taskId: string }) {
                     >
                       {busy === c.id ? "judging…" : "score this answer"}
                     </button>
+                    {r && <VerdictPanel metrics={r.metrics} />}
                     {caseError[c.id] && (
                       <p className="font-mono text-[12px] text-[var(--sec)]">
                         the judge failed on this one: {caseError[c.id]}
