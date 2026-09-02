@@ -1,0 +1,108 @@
+import { describe, expect, it } from "vitest";
+import { byPersona, median } from "./compare";
+import type { RunRow } from "./runs";
+
+let seq = 0;
+const run = (over: Partial<RunRow>): RunRow => ({
+  id: `run-${++seq}`,
+  task_id: "python-bugfix-diff",
+  task_commit: "cf92b66",
+  persona: "baseline",
+  score: 0.5,
+  passed: false,
+  cases_total: 10,
+  cases_passed: 5,
+  user_login: null,
+  started_at: "2026-09-02T10:00:00Z",
+  ...over,
+});
+
+describe("median", () => {
+  it("takes the middle of an odd count", () => {
+    expect(median([0.1, 0.9, 0.5])).toBe(0.5);
+  });
+
+  it("averages the two middles of an even count", () => {
+    expect(median([0.2, 0.4, 0.6, 0.8])).toBeCloseTo(0.5);
+  });
+
+  it("has nothing to report for no values", () => {
+    expect(median([])).toBeNull();
+  });
+});
+
+describe("byPersona", () => {
+  // The whole point of the board: same task, two configurations, which did
+  // better.
+  it("groups runs by configuration and reports each one's median", () => {
+    const out = byPersona([
+      run({ persona: "with-skill", score: 0.8 }),
+      run({ persona: "with-skill", score: 0.7 }),
+      run({ persona: "with-skill", score: 0.9 }),
+      run({ persona: "baseline", score: 0.6 }),
+    ]);
+
+    expect(out.map((p) => p.persona)).toEqual(["with-skill", "baseline"]);
+    expect(out[0]).toMatchObject({ median: 0.8, best: 0.9, worst: 0.7, runs: 3 });
+  });
+
+  // A best-of would let one lucky sample beat a steadier configuration, and
+  // reward whoever ran the most times.
+  it("ranks on the median, so one lucky run does not win", () => {
+    const out = byPersona([
+      run({ persona: "lucky", score: 1.0 }),
+      run({ persona: "lucky", score: 0.1 }),
+      run({ persona: "lucky", score: 0.1 }),
+      run({ persona: "steady", score: 0.6 }),
+      run({ persona: "steady", score: 0.6 }),
+    ]);
+
+    expect(out[0].persona).toBe("steady");
+    expect(out[1].best).toBe(1.0);
+  });
+
+  // The tasks are pinned per commit. Two runs of "the same" configuration
+  // judged against different versions were not asked the same questions.
+  it("does not merge runs judged against different commits", () => {
+    const out = byPersona([
+      run({ persona: "baseline", task_commit: "aaa", score: 0.9 }),
+      run({ persona: "baseline", task_commit: "bbb", score: 0.2 }),
+    ]);
+
+    expect(out).toHaveLength(2);
+    expect(out.map((p) => p.task_commit)).toEqual(["aaa", "bbb"]);
+  });
+
+  // "Never produced a score" is not "scored zero", and must not outrank a
+  // configuration that actually scored something.
+  it("sorts an unscored configuration last rather than as a zero", () => {
+    const out = byPersona([
+      run({ persona: "broken", score: null }),
+      run({ persona: "works", score: 0.05 }),
+    ]);
+
+    expect(out.map((p) => p.persona)).toEqual(["works", "broken"]);
+    expect(out[1].median).toBeNull();
+  });
+
+  it("breaks a tie towards the configuration proven over more runs", () => {
+    const out = byPersona([
+      run({ persona: "once", score: 0.7 }),
+      run({ persona: "thrice", score: 0.7 }),
+      run({ persona: "thrice", score: 0.7 }),
+      run({ persona: "thrice", score: 0.7 }),
+    ]);
+
+    expect(out[0].persona).toBe("thrice");
+  });
+
+  it("names the people behind a configuration, without repeating one", () => {
+    const out = byPersona([
+      run({ persona: "p", user_login: "ruqii" }),
+      run({ persona: "p", user_login: "ruqii" }),
+      run({ persona: "p", user_login: null }),
+    ]);
+
+    expect(out[0].people).toEqual(["ruqii"]);
+  });
+});
