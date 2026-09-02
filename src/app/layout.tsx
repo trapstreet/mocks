@@ -83,12 +83,13 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                 footer is one left-aligned line of prose now. */}
             <div className="flex w-full flex-col gap-1.5 px-4 py-4 font-mono text-[12px] leading-[1.7] text-[var(--mut)] lg:px-7">
               <p className="font-semibold text-[var(--sec)]">mocks</p>
-              <p className="max-w-[80ch]">
-                Mock exams. Attempts are recorded here and nowhere else, and the
-                answers to these tasks are public at their pinned commits, so a
-                score here is practice.{" "}
+              {/* Kept to one line on a desktop rail: the longer version wrapped
+                  to three and read as a paragraph nobody asked for. The detail
+                  it carried is in the hero. */}
+              <p>
+                Mock exams — nothing here counts.{" "}
                 <a href="https://trapstreet.run" target="_blank" rel="noreferrer">
-                  For evaluation that counts, run it on trapstreet.run →
+                  For evaluation that does, run it on trapstreet.run →
                 </a>
               </p>
             </div>

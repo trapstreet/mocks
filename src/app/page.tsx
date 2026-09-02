@@ -25,25 +25,20 @@ export default async function Home() {
         <h1 className="text-[30px] font-bold leading-[1.05] tracking-[-0.03em] text-[var(--head)] sm:text-[40px]">
           Sit a real benchmark in a browser tab.
         </h1>
-        <p className="max-w-[64ch] text-[15px] leading-[1.6] text-[var(--txt)]">
+        <p className="max-w-[68ch] text-[15px] leading-[1.65] text-[var(--txt)]">
           Every board below is a live task from{" "}
           <a href="https://trapstreet.run" target="_blank" rel="noreferrer">
             trapstreet.run
           </a>
-          . Open one in a WebMCP browser, tell your agent to answer it, and
-          watch it work — each case scored on the page by{" "}
+          . Open one in a WebMCP browser, tell your agent to sit it, and watch
+          each answer scored on the page by{" "}
           <strong className="font-semibold text-[var(--head)]">
             that task&apos;s own <code className="text-[var(--brt)]">judge.py</code>
           </strong>
-          , fetched from the commit its leaderboard grades against and run
-          unmodified.
-        </p>
-        <p className="max-w-[64ch] text-[14px] leading-[1.6] text-[var(--mut)]">
-          No install, no CLI, no API key — and no per-task code here either, so
-          a task published tomorrow is attemptable the moment it lands. These
-          are <em className="not-italic text-[var(--sec)]">mocks</em>: the
-          answers are public at those pinned commits, so a score here is
-          practice.{" "}
+          , run unmodified from the commit its leaderboard grades against. No
+          install, no API key, and no per-task code here either — a task
+          published tomorrow works the day it lands. The answers are public at
+          those commits, so a score here is practice.{" "}
           <a href="/arena">The arena has a question with no answer key anywhere →</a>
         </p>
       </section>
@@ -70,16 +65,6 @@ export default async function Home() {
               </li>
             ))}
           </ul>
-          <p className="pt-3.5 text-[13px] leading-[1.6] text-[var(--mut)]">
-            These are the same tasks trapstreet ranks, with none of its run
-            records: what gets answered here is this site&apos;s own. The case
-            count is how long a sitting is — a board marked{" "}
-            <span className="font-mono text-[var(--warn)]">long</span> is an
-            afternoon in a chat window, not a try. Not every task can be
-            attempted in a browser either: one whose cases are PDFs, whose judge
-            shells out, or whose judge grades a self-report says so on its own
-            page and points you somewhere it can be done properly.
-          </p>
         </section>
       )}
     </div>
