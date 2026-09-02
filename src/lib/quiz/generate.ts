@@ -65,6 +65,42 @@ const LAST = ["Vandermeer", "Okonkwo", "Halvorsen", "Castellanos", "Abernathy",
 const pick = <T,>(rng: () => number, xs: readonly T[]): T =>
   xs[Math.floor(rng() * xs.length)];
 
+// Second halves that pair plausibly with the first word of a request, so a
+// decoy shares vocabulary with the real entry instead of being about some
+// unrelated subject.
+const VARIANT_TAILS = [
+  "addition", "removal", "renewal", "review", "amendment", "extension",
+  "onboarding", "offboarding", "export", "import", "hold", "release",
+  "upgrade", "downgrade", "advance", "reconciliation", "disposal",
+  "write-off", "badge", "change",
+];
+
+/**
+ * Near misses for the entry hop. Searching the request type named in the
+ * question used to return exactly ONE title — nothing to choose between,
+ * so the first step was free. These share the request's own words, which
+ * is what makes them show up beside it and what makes reading necessary.
+ */
+function entryDecoys(rng: () => number, request: string, howMany: number): string[] {
+  const words = request.split(" ");
+  const head = words.slice(0, -1).join(" ") || request;
+  const tail = words[words.length - 1];
+
+  const out = new Set<string>();
+  let guard = 0;
+  while (out.size < howMany && guard++ < 200) {
+    // Half keep the subject and change what is being done to it; half keep
+    // the action and change the subject. Either way a search for the real
+    // request hits them.
+    const variant =
+      rng() < 0.5
+        ? `${head} ${pick(rng, VARIANT_TAILS)}`
+        : `${pick(rng, REQUESTS).split(" ").slice(0, -1).join(" ") || "vendor"} ${tail}`;
+    if (variant !== request && variant.trim()) out.add(variant);
+  }
+  return [...out];
+}
+
 /** A desk code like `LX-4471` — meaningless until you have read it somewhere. */
 const code = (rng: () => number) => {
   const letters = "BCDFGHJKLMNPQRSTVWXZ";
@@ -125,12 +161,16 @@ export function generateQuiz(opts: {
   // Near misses: same shape, same vocabulary, different values. A search that
   // stops at the first plausible hit lands on one of these and produces a
   // confident wrong answer.
+  // The entry hop gets its near misses first; the rest are ordinary decoys.
+  const nearMisses = entryDecoys(rng, request, Math.min(3, distractors));
+
   for (let d = 0; d < distractors; d++) {
-    const otherRequest = pick(rng, REQUESTS);
+    const otherRequest = nearMisses[d] ?? pick(rng, REQUESTS);
     const otherCode = code(rng);
     const otherRole = pick(rng, ROLE_WORDS);
     const otherPerson = person(rng);
-    const shape = Math.floor(rng() * 3);
+    // A near miss is only useful if it wears the entry hop's shape.
+    const shape = d < nearMisses.length ? 0 : Math.floor(rng() * 3);
     const body =
       shape === 0
         ? `All ${otherRequest} submissions are handled by the ${otherCode} desk.`

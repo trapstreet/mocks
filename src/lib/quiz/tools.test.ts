@@ -43,6 +43,28 @@ describe("search_wiki", () => {
     expect(out.results.map((r) => r.id)).toContain(quiz.chain[0].sectionId);
   });
 
+  // Measured in a live ChatGPT run: the first search returned ONE title
+  // while later hops returned two and six. A hop with a single candidate is
+  // a free step — nothing to get wrong — so the entry point needs company
+  // that shares its vocabulary, not decoys about unrelated subjects.
+  it("gives the entry hop several plausible hits, not one obvious one", async () => {
+    for (const seed of [1, 42, 704594, 984462, 7]) {
+      const q = generateQuiz({ seed, hops: 3, distractors: 8 });
+      const d: QuizToolDeps = {
+        quiz: () => q, reads: () => [], onRead: () => {}, onAnswer: () => {},
+      };
+      const out = (await tool(d, "search_wiki").execute({ query: q.chain[0].key })) as {
+        results: Array<{ id: string }>;
+      };
+      expect(
+        out.results.length,
+        `seed ${seed}: "${q.chain[0].key}" returned ${out.results.length} hit(s)`,
+      ).toBeGreaterThanOrEqual(3);
+      // The real entry must still be among them.
+      expect(out.results.map((r) => r.id)).toContain(q.chain[0].sectionId);
+    }
+  });
+
   it("caps how much one query can drag back", async () => {
     const out = (await tool(deps(), "search_wiki").execute({ query: "a" })) as {
       results: unknown[];
