@@ -122,6 +122,14 @@ export function assessRunnable(input: {
     };
   }
 
+  if (/^\s*while\s+(?:True|1)\s*:/m.test(judgeSrc) || /\btime\.sleep\s*\(/.test(judgeSrc)) {
+    return {
+      runnable: false,
+      reason:
+        "its judge may block the browser tab when run synchronously, so this mock refuses it until judge execution moves to a worker with a hard timeout",
+    };
+  }
+
   const imports = new Set(
     [...judgeSrc.matchAll(/^\s*(?:import|from)\s+([A-Za-z_][\w.]*)/gm)].map(
       (m) => m[1].split(".")[0],
@@ -144,7 +152,7 @@ export function assessRunnable(input: {
     };
   }
 
-  const binary = inputFiles.filter((f) => BINARY.test(f));
+  const binary = inputFiles.filter((f) => BINARY.test(f) && !/\.pdf$/i.test(f));
   if (binary.length) {
     const ext = binary[0].slice(binary[0].lastIndexOf("."));
     return {

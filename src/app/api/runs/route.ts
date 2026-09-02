@@ -2,13 +2,13 @@ import { NextResponse } from "next/server";
 import { sql } from "@/lib/db/client";
 import { recordRun } from "@/lib/db/runs";
 import { InvalidRun, parseSubmission } from "@/lib/db/submission";
+import { checkRunWrite } from "@/lib/db/write-guard";
 
 // Recording a run on this site's own board.
 //
-// Open to anyone, on purpose and for now: sign-in is the next step, and a
-// board with no records is worth less this week than a board that anybody can
-// write to. What that costs is worth naming — a name on this board proves
-// only that somebody typed it — and the page says so beside every row.
+// Open to anyone, on purpose and for now. The write guard is a speed bump, not
+// identity: it stops accidental double-submits and casual spam, while the page
+// still says plainly that a name here proves only that somebody typed it.
 
 export const runtime = "nodejs";
 
@@ -33,6 +33,13 @@ export async function POST(request: Request) {
 
   try {
     const run = parseSubmission(body);
+    const write = checkRunWrite(request, run);
+    if (!write.ok) {
+      return NextResponse.json(
+        { error: write.error },
+        { status: write.status, headers: { "Retry-After": String(write.retryAfter) } },
+      );
+    }
     const id = await recordRun(db, run);
     return NextResponse.json({ id }, { status: 201 });
   } catch (e) {

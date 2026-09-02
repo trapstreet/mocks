@@ -77,6 +77,45 @@ describe("traceRunTools", () => {
     expect(steps).toEqual([{ kind: "exhausted", answered: 3, total: 3 }]);
   });
 
+  it("shows PDF file and page reads", async () => {
+    const { steps, push } = collect();
+    const tools = traceRunTools(
+      [
+        tool("list_case_files", { case_id: "case_01", files: [{ file_id: "document.pdf" }] }),
+        tool("read_pdf_page_text", {
+          case_id: "case_01",
+          file_id: "document.pdf",
+          page: 3,
+          pages: 11,
+          text: "x",
+        }),
+        tool("search_pdf_text", {
+          case_id: "case_01",
+          file_id: "document.pdf",
+          query: "treasury custody",
+          results: [{ page: 3, snippet: "Treasury" }],
+        }),
+      ],
+      push,
+    );
+
+    await tools[0].execute({ case_id: "case_01" });
+    await tools[1].execute({ case_id: "case_01", file_id: "document.pdf", page: 3 });
+    await tools[2].execute({ case_id: "case_01", file_id: "document.pdf", query: "x" });
+
+    expect(steps).toEqual([
+      { kind: "files", caseId: "case_01", count: 1 },
+      { kind: "pdfRead", caseId: "case_01", fileId: "document.pdf", page: 3, pages: 11 },
+      {
+        kind: "pdfSearch",
+        caseId: "case_01",
+        fileId: "document.pdf",
+        query: "treasury custody",
+        hits: 1,
+      },
+    ]);
+  });
+
   // A trace is documentation. It must not become a way for the page to change
   // the run it is documenting.
   it("hands the agent the tool's own output, untouched", async () => {

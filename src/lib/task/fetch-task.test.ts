@@ -80,6 +80,42 @@ describe("fetchTaskBundle", () => {
     ]);
   });
 
+  it("keeps PDF inputs as files instead of putting their bytes in the question", async () => {
+    const pdfTree = {
+      tree: [
+        { type: "blob", path: "tasks/demo/traptask.yaml" },
+        { type: "blob", path: "tasks/demo/judge.py" },
+        { type: "blob", path: "tasks/demo/inputs/c1/source.pdf" },
+        { type: "blob", path: "tasks/demo/expected/c1/answer.json" },
+      ],
+    };
+    const f = vi.fn(async (url: string) =>
+      url.includes("/git/trees/")
+        ? json(pdfTree)
+        : fakeFetch({
+            [`https://raw.githubusercontent.com/owner/repo/${PIN.commit_sha}/tasks/demo/traptask.yaml`]:
+              "cases:\n  - id: c1\n    description: pdf case\n",
+            [`https://raw.githubusercontent.com/owner/repo/${PIN.commit_sha}/tasks/demo/judge.py`]:
+              'answer = manifest["run"]["stdout"]\n',
+          })(url),
+    );
+
+    const b = await fetchTaskBundle(PIN, f);
+
+    expect(b.runnable).toBe(true);
+    expect(b.cases[0].question).toBe("");
+    expect(b.cases[0].files).toEqual([
+      {
+        id: "inputs/c1/source.pdf",
+        name: "source.pdf",
+        path: "inputs/c1/source.pdf",
+        url: `https://raw.githubusercontent.com/owner/repo/${PIN.commit_sha}/tasks/demo/inputs/c1/source.pdf`,
+        kind: "pdf",
+      },
+    ]);
+    expect(f.mock.calls.map((c) => c[0]).join("\n")).not.toContain("source.pdf");
+  });
+
   it("keeps each case's expected files under that case", async () => {
     const b = await fetchTaskBundle(PIN, fakeFetch());
     expect(b.expected.c1).toEqual({ "expected.json": '{"verdict": "drive"}' });
@@ -101,6 +137,35 @@ describe("fetchTaskBundle", () => {
     const b = await fetchTaskBundle(PIN, f);
     expect(b.runnable).toBe(false);
     expect(b.reason).toContain("subprocess");
+  });
+
+  it("refuses unsupported binary inputs before fetching case bodies", async () => {
+    const binTree = {
+      tree: [
+        { type: "blob", path: "tasks/demo/traptask.yaml" },
+        { type: "blob", path: "tasks/demo/judge.py" },
+        { type: "blob", path: "tasks/demo/inputs/c1/archive.zip" },
+        { type: "blob", path: "tasks/demo/expected/c1/answer.json" },
+      ],
+    };
+    const f = vi.fn(async (url: string) =>
+      url.includes("/git/trees/")
+        ? json(binTree)
+        : fakeFetch({
+            [`https://raw.githubusercontent.com/owner/repo/${PIN.commit_sha}/tasks/demo/traptask.yaml`]:
+              "cases:\n  - id: c1\n    description: zip case\n",
+            [`https://raw.githubusercontent.com/owner/repo/${PIN.commit_sha}/tasks/demo/judge.py`]:
+              'answer = manifest["run"]["stdout"]\n',
+          })(url),
+    );
+
+    const b = await fetchTaskBundle(PIN, f);
+
+    expect(b.runnable).toBe(false);
+    expect(b.reason).toContain(".zip");
+    expect(b.expected).toEqual({});
+    expect(f.mock.calls.map((c) => c[0]).join("\n")).not.toContain("archive.zip");
+    expect(f.mock.calls.map((c) => c[0]).join("\n")).not.toContain("expected/c1");
   });
 
   // A GitHub outage or a spent rate limit must never masquerade as a verdict
@@ -133,9 +198,13 @@ describe("fetchTaskBundle", () => {
         { type: "blob", path: "expected/c1/expected.json" },
       ],
     };
-    const inner = fakeFetch();
     const f = vi.fn(async (url: string) =>
-      url.includes("/git/trees/") ? json(rootTree) : inner(url),
+      url.includes("/git/trees/")
+        ? json(rootTree)
+        : fakeFetch({
+            [`https://raw.githubusercontent.com/owner/repo/${PIN.commit_sha}/judge.py`]:
+              'answer = manifest["run"]["stdout"]\n',
+          })(url),
     );
     const b = await fetchTaskBundle({ ...PIN, repo_path: "" }, f);
     expect(Object.keys(b.modules)).toEqual(["judge.py"]);

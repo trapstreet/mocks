@@ -19,7 +19,7 @@ export interface TaskBundle {
   traptask: Traptask;
   /** judge.py, grader.py and any helper beside them, by basename. */
   modules: Record<string, string>;
-  cases: Array<{ id: string; description: string; question: string }>;
+  cases: Array<{ id: string; description: string; question: string; files: CaseInputFile[] }>;
   /** Per case, its expected/ files. Held by the page — never sent to an agent. */
   expected: Record<string, Record<string, string>>;
   runnable: boolean;
@@ -27,6 +27,14 @@ export interface TaskBundle {
   alternative?: { label: string; href: string };
   /** Pyodide packages the judge needs loaded before it can run. */
   packages: string[];
+}
+
+export interface CaseInputFile {
+  id: string;
+  name: string;
+  path: string;
+  url: string;
+  kind: "text" | "pdf";
 }
 
 /**
@@ -45,6 +53,14 @@ export class TaskUnreadableError extends Error {
 
 const owner = (repoUrl: string) =>
   repoUrl.replace(/^https:\/\/github\.com\//, "").replace(/\.git$/, "");
+
+const PDF = /\.pdf$/i;
+const TEXT = /\.(txt|md|markdown|json|jsonl|csv|tsv|yaml|yml|xml|html?|log|py)$/i;
+const SUPPORTED_INPUT = /\.(txt|md|markdown|json|jsonl|csv|tsv|yaml|yml|xml|html?|log|py|pdf)$/i;
+const ext = (path: string) => {
+  const at = path.lastIndexOf(".");
+  return at >= 0 ? path.slice(at) : "unknown";
+};
 
 /**
  * Only ever called with a string URL, so it is typed that way: widening this
@@ -98,17 +114,72 @@ export async function fetchTaskBundle(
   const under = (dir: string, caseId: string) =>
     paths.filter((p) => p.startsWith(`${dir}/${caseId}/`));
 
+  if (!modules["judge.py"]) {
+    throw new TaskUnreadableError("judge.py", lastStatus);
+  }
+
+  const inputFiles = paths.filter((p) => p.startsWith(`${traptask.inputsDir}/`));
+  const unsupported = inputFiles.filter((p) => !SUPPORTED_INPUT.test(p));
+  const verdict: ReturnType<typeof assessRunnable> =
+    unsupported.length > 0
+      ? {
+          runnable: false as const,
+          reason:
+            `its cases carry ${ext(unsupported[0])} inputs, ` +
+            "which cannot be handed to an agent in this browser",
+        }
+      : assessRunnable({
+          traptask,
+          judgeSrc: modules["judge.py"],
+          inputFiles,
+          localModules: moduleNames,
+        });
+
+  if (!verdict.runnable) {
+    return {
+      traptask,
+      modules,
+      cases: traptask.cases.map((c) => ({
+        id: c.id,
+        description: c.description,
+        question: "",
+        files: [],
+      })),
+      expected: {},
+      runnable: false,
+      reason: verdict.reason,
+      ...("alternative" in verdict && verdict.alternative
+        ? { alternative: verdict.alternative }
+        : {}),
+      packages: [],
+    };
+  }
+
   const cases = await Promise.all(
     traptask.cases.map(async (c) => {
       const files = under(traptask.inputsDir, c.id);
+      const visibleFiles: CaseInputFile[] = files
+        .filter((f) => TEXT.test(f) || PDF.test(f))
+        .sort()
+        .map((f) => ({
+          id: f,
+          name: f.split("/").pop() ?? f,
+          path: f,
+          url: raw(f),
+          kind: PDF.test(f) ? "pdf" : "text",
+        }));
       // The question is whatever text the case ships. Concatenated in path
       // order when a case carries more than one file, so nothing is dropped
-      // silently just because the layout was unexpected.
-      const parts = await Promise.all(files.sort().map((f) => text(f)));
+      // silently just because the layout was unexpected. PDFs stay as files:
+      // WebMCP tools let the agent search/read them a page at a time.
+      const parts = await Promise.all(
+        files.filter((f) => TEXT.test(f)).sort().map((f) => text(f)),
+      );
       return {
         id: c.id,
         description: c.description,
         question: parts.filter((p): p is string => p !== null).join("\n\n").trim(),
+        files: visibleFiles,
       };
     }),
   );
@@ -128,27 +199,13 @@ export async function fetchTaskBundle(
     }),
   );
 
-  if (!modules["judge.py"]) {
-    throw new TaskUnreadableError("judge.py", lastStatus);
-  }
-
-  const verdict = assessRunnable({
-    traptask,
-    judgeSrc: modules["judge.py"],
-    inputFiles: paths.filter((p) => p.startsWith(`${traptask.inputsDir}/`)),
-    localModules: moduleNames,
-  });
-
   return {
     traptask,
     modules,
     cases,
     expected,
-    runnable: verdict.runnable,
-    reason: verdict.runnable ? null : verdict.reason,
-    ...(verdict.runnable || !verdict.alternative
-      ? {}
-      : { alternative: verdict.alternative }),
-    packages: verdict.runnable ? verdict.packages : [],
+    runnable: true,
+    reason: null,
+    packages: verdict.packages,
   };
 }

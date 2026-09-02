@@ -155,6 +155,11 @@ describe("assessRunnable", () => {
     expect(refusal(assessRunnable({ ...base, judgeSrc: base.judgeSrc + "import subprocess\n" }))).toContain("subprocess");
   });
 
+  it("refuses a judge that can obviously block the browser tab", () => {
+    expect(refusal(assessRunnable({ ...base, judgeSrc: base.judgeSrc + "while True:\n    pass\n" }))).toContain("block the browser");
+    expect(refusal(assessRunnable({ ...base, judgeSrc: base.judgeSrc + "import time\ntime.sleep(60)\n" }))).toContain("worker");
+  });
+
   it("refuses a judge that needs a package Pyodide has not got", () => {
     expect(refusal(assessRunnable({ ...base, judgeSrc: base.judgeSrc + "import pdfplumber\n" }))).toContain("pdfplumber");
   });
@@ -169,11 +174,18 @@ describe("assessRunnable", () => {
     ).toMatchObject({ runnable: true });
   });
 
-  it("refuses binary case inputs an agent cannot be handed as text", () => {
-    expect(refusal(assessRunnable({
+  it("allows PDF case inputs because PDF tools expose them page by page", () => {
+    expect(assessRunnable({
       ...base,
       inputFiles: ["inputs/scan_01/page.pdf", "inputs/scan_01/note.txt"],
-    }))).toContain(".pdf");
+    })).toMatchObject({ runnable: true });
+  });
+
+  it("refuses non-PDF binary case inputs an agent cannot inspect here", () => {
+    expect(refusal(assessRunnable({
+      ...base,
+      inputFiles: ["inputs/scan_01/archive.zip", "inputs/scan_01/note.txt"],
+    }))).toContain(".zip");
   });
 
   // Case count is a matter of patience, not capability — never a refusal.

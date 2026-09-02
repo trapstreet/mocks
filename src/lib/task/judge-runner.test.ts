@@ -62,7 +62,7 @@ const bundle = (over: Partial<TaskBundle> = {}): TaskBundle => ({
     cases: [{ id: "car_wash_50m", description: "" }],
   },
   modules: { "judge.py": JUDGE, "grader.py": GRADER },
-  cases: [{ id: "car_wash_50m", description: "", question: "walk or drive?" }],
+  cases: [{ id: "car_wash_50m", description: "", question: "walk or drive?", files: [] }],
   expected: { car_wash_50m: { "expected.json": '{"verdict": "drive"}' } },
   runnable: true,
   reason: null,
@@ -240,4 +240,3 @@ describe("a judge that prints only a score", () => {
     expect(scoreOnly().judgeCase("car_wash_50m", "42").metrics.shape).toBe("digits");
   });
 });
-

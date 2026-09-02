@@ -6,6 +6,7 @@ import { buildRunTools } from "@/lib/task/run-tools";
 import { traceRunTools, abbreviate, type TraceStep } from "@/lib/task/trace";
 import { VerdictPanel } from "./verdict-panel";
 import { createJudgeRunner, type CaseResult, type PyRuntime } from "@/lib/task/judge-runner";
+import { createPdfReader } from "@/lib/task/pdf-reader";
 import { PYODIDE_INDEX_URL } from "@/lib/pyodide-cdn";
 import type { TaskBundle } from "@/lib/task/fetch-task";
 
@@ -70,9 +71,13 @@ export function BenchmarkRunner({ taskId }: { taskId: string }) {
   // What was actually submitted per case. The results carry the verdict, not
   // the answer, and the board keeps both.
   const answersRef = useRef<Record<string, string>>({});
+  const pdfRef = useRef<ReturnType<typeof createPdfReader> | null>(null);
   payloadRef.current = payload;
   resultsRef.current = results;
   personaRef.current = persona;
+  if (!pdfRef.current) {
+    pdfRef.current = createPdfReader(() => payloadRef.current?.cases.flatMap((c) => c.files) ?? []);
+  }
 
   useEffect(() => {
     let cancelled = false;
@@ -231,6 +236,8 @@ export function BenchmarkRunner({ taskId }: { taskId: string }) {
         reason: () => payloadRef.current?.reason ?? null,
         cases: () => payloadRef.current?.cases ?? [],
         results: () => resultsRef.current,
+        readPdfPageText: (caseId, fileId, page) => pdfRef.current!.readPage(caseId, fileId, page),
+        searchPdfText: (caseId, fileId, query) => pdfRef.current!.search(caseId, fileId, query),
         judge,
         grade,
       }),
@@ -375,6 +382,24 @@ export function BenchmarkRunner({ taskId }: { taskId: string }) {
                         {s.total}
                       </span>
                     )}
+                    {s.kind === "files" && (
+                      <span>
+                        listed files for <span className="text-[var(--head)]">{s.caseId}</span> ·{" "}
+                        {s.count}
+                      </span>
+                    )}
+                    {s.kind === "pdfRead" && (
+                      <span>
+                        read PDF page <span className="text-[var(--head)]">{s.page}</span>/
+                        {s.pages} · {s.fileId}
+                      </span>
+                    )}
+                    {s.kind === "pdfSearch" && (
+                      <span>
+                        searched PDF for <span className="text-[var(--head)]">{s.query}</span> ·{" "}
+                        {s.hits} hits
+                      </span>
+                    )}
                     {s.kind === "answer" && (
                       <span className={s.passed ? "text-[var(--ok)]" : "text-[var(--bad)]"}>
                         answered <span className="text-[var(--head)]">{s.answer}</span> ·{" "}
@@ -420,8 +445,25 @@ export function BenchmarkRunner({ taskId }: { taskId: string }) {
                     )}
                   </div>
                   <pre className="max-h-[16rem] overflow-auto whitespace-pre-wrap text-[13px] leading-[1.55] text-[var(--sec)]">
-                    {c.question}
+                    {c.question ||
+                      "The prompt and source are in the case PDF. Use the PDF tools, or open the file below."}
                   </pre>
+                  {c.files?.some((f) => f.kind === "pdf") && (
+                    <div className="mt-2 flex flex-col gap-1 border-t border-[var(--bdl)] pt-2 font-mono text-[12px] text-[var(--mut)]">
+                      <span>case files</span>
+                      {c.files.map((f) => (
+                        <a
+                          key={f.id}
+                          href={f.url}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="break-all text-[var(--sec)]"
+                        >
+                          {f.name} · {f.kind}
+                        </a>
+                      ))}
+                    </div>
+                  )}
                   <form
                     className="mt-3 flex flex-col gap-2"
                     onSubmit={(e) => {

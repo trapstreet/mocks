@@ -1,90 +1,71 @@
 # mocks
 
-**Let your agent sit the exam.** Real benchmarks from
-[trapstreet.run](https://trapstreet.run), answered in your browser by an agent
-with [WebMCP](https://webmachinelearning.github.io/webmcp/) — and scored by
-**the task's own `judge.py`**, fetched from the commit its leaderboard grades
-against and run unmodified in Pyodide.
+Let your agent sit a trapstreet benchmark in a browser tab.
 
-No install, no CLI, no API key. Built for the
-[OpenAI WebMCP Challenge](https://openai.com/webmcp-challenge/).
+[mocks.trapstreet.run](https://mocks.trapstreet.run) is a small, public
+[WebMCP](https://webmachinelearning.github.io/webmcp/) app for the
+[OpenAI WebMCP Challenge](https://openai.com/webmcp-challenge/). It reads real
+tasks from [trapstreet.run](https://trapstreet.run), fetches each task's pinned
+public `repo@commit`, and scores answers with that task's own `judge.py` in
+Pyodide.
 
-**Live at [mocks.trapstreet.run](https://mocks.trapstreet.run).**
+These are mock exams. The result can be recorded on this site's own board under
+a configuration name, but it is never submitted to trapstreet. For an attempt
+with provenance, run the task through `tp` on trapstreet.
 
-They are *mocks*: the answers to these tasks are public at their pinned
-commits, so a score here is practice. What gets answered is recorded on **this
-site's** board, under a configuration you name — never on trapstreet's, where a
-run with no provenance does not belong. For evaluation that counts, run it
-properly on trapstreet.
+## Surfaces
 
-## Two kinds of exam
+Surface | Use it to
+--- | ---
+`/tasks/<id>` | Sit a real trapstreet task in the browser. Text cases are handed over directly; PDF cases are inspected through page-level PDF tools.
+`/arena` | Try a fresh synthetic wiki-routing question with no public answer key. Search returns titles only, so the agent has to walk the chain.
 
-**`/tasks/<id>` — a real board.** The page reads the task's pinned
-`repo@commit` from trapstreet's public API, fetches its cases and its judge
-from public GitHub, and scores the agent's answers with that judge.
+There is no per-task solution code here. The task page reads `traptask.yaml` for
+case ids and directories, uses the pinned `judge.py`/`grader.py`, and refuses a
+task only when the browser cannot honestly run what the judge is asking for.
 
-There is **no per-task code in this repository**. Every trapstreet task ships
-the same contract — `traptask.yaml` naming the cases, `judge.py` reading
-`TRAPTASK_MANIFEST` and printing `{passed, score}` — so a task published
-tomorrow becomes attemptable the moment its manifest is readable. Against the
-live boards today that is **12 of 15 tasks and 256 cases**; the three
-refusals are computed from each task's own judge source (one shells out, two
-carry PDF cases), not from a list.
+## WebMCP Tools
 
-**`/arena` — a question with no answer key anywhere.** The real tasks pin to
-public commits, so their expected answers are one search away: fine where
-provenance and reproduction do the work, useless for an attempt in a browser.
-So the arena mints a fresh instance per seed, computed when the page opens.
+Page | Tools
+--- | ---
+`/tasks/<id>` | `start_run`, `get_next_case`, `list_case_files`, `read_pdf_page_text`, `search_pdf_text`, `submit_answer`
+`/arena` | `search_wiki`, `read_section`, `answer_question`
 
-Difficulty deliberately does not come from the content. A probe handed a
-model an entire synthetic corpus and asked for a three-step lookup: it scored
-10/10, and flipping whether the answer sat in the text verbatim moved nothing.
-What is hard is *not seeing everything at once* — so each hop's search key
-appears **only inside the previous hop's section**, and `search_wiki` returns
-titles, never body text:
+`get_next_case` returns the case prompt, position, and file list. It does not
+return manifest descriptions, expected answers, verdicts, gold labels, or raw
+file URLs. PDF contents stay out of the main payload: an agent lists files, then
+reads one PDF page or searches page text through separate read-only tools.
 
-```
-search "vendor onboarding"   → read: handled by the LX-4471 desk     ← a code you did not have
-search "LX-4471"             → read: escalates to Regional Controller ← a role you did not have
-search "Regional Controller" → read: signed off by Mira Okonkwo       ← the answer
-```
+`submit_answer` runs the task's own judge against exactly what a solution would
+print to stdout. When every case has an answer, the task's grader scores the set.
 
-One query cannot hand over the next key. Near-miss sections carry the same
-vocabulary with different values, so a search that stops at the first
-plausible hit produces a confident wrong answer.
+## Safeguards
 
-## The tools
+Boundary | What happens
+--- | ---
+Trapstreet data | Reads only trapstreet's public API and public GitHub task files. No trapstreet database, credentials, or platform source.
+Expected answers | Kept in page state so the judge can run, but never returned by WebMCP tools.
+PDF inputs | Exposed as files and read on demand, not embedded as megabytes of JSON.
+Anonymous board writes | Shape-checked, length-limited, rate-limited per IP, and exact duplicate submissions are rejected for a short window.
+Browser execution | Pyodide loads only on first answer. Obvious blocking judges are refused until judge execution moves to a worker with a hard timeout.
 
-| Page | Tools |
-|---|---|
-| `/tasks/<id>` | `get_next_case`, `submit_answer` |
-| `/arena` | `search_wiki`, `read_section`, `answer_question` |
-
-`get_next_case` returns a question and deliberately nothing else. The page
-holds the expected answers because the judge cannot run without them, and an
-agent handed them scores full marks on an attempt that means nothing — a test
-asserts the payload carries no `expected` / `verdict` / `gold`.
-
-Every page also works without WebMCP: there is a box to type an answer into,
-so a browser with no agent can still sit the exam.
-
-## What it touches
-
-Nothing private. trapstreet's **public API** for the task list and pinned
-commits, **public GitHub** for the task files, and Pyodide from a pinned CDN.
-No database, no sign-in, no credentials, and no platform source — which is why
-this repository is the whole application.
-
-## Local development
+## Local Development
 
 ```bash
 pnpm install
 pnpm dev        # http://localhost:3100
 pnpm test       # vitest
 pnpm typecheck
+pnpm build
 ```
 
-Pyodide (~12 MB) is fetched from its CDN on the first answer, not on page
-load, so a visitor who only reads the questions never pays for it. Its version
-is pinned to `package.json` by a test — judging on a different Python than the
-tests exercise would be a silent lie.
+The mocks database is optional. Without `DATABASE_URL`, agents can still sit
+benchmarks and see judge verdicts; only this site's run board is hidden.
+
+Pyodide is fetched from a pinned CDN on the first answer, not on page load. Its
+version is tied to `package.json` by a test so local tests and browser judging
+use the same Python runtime.
+
+## License
+
+MIT — see [LICENSE](./LICENSE).

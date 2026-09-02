@@ -16,6 +16,9 @@ export type TraceStep =
   | { kind: "persona"; persona: string }
   | { kind: "recorded"; ok: boolean; detail: string }
   | { kind: "fetch"; caseId: string; index: number; total: number }
+  | { kind: "files"; caseId: string; count: number }
+  | { kind: "pdfRead"; caseId: string; fileId: string; page: number; pages: number }
+  | { kind: "pdfSearch"; caseId: string; fileId: string; query: string; hits: number }
   | { kind: "exhausted"; answered: number; total: number }
   | { kind: "answer"; caseId: string; answer: string; passed: boolean; score: number }
   | { kind: "graded"; passed: boolean; score: number }
@@ -55,6 +58,30 @@ function stepFor(
       return { kind: "fetch", caseId: o.case_id, index: num(o.index), total: num(o.total) };
     }
     return null;
+  }
+
+  if (tool === "list_case_files" && typeof o.case_id === "string" && Array.isArray(o.files)) {
+    return { kind: "files", caseId: o.case_id, count: o.files.length };
+  }
+
+  if (tool === "read_pdf_page_text" && typeof o.case_id === "string") {
+    return {
+      kind: "pdfRead",
+      caseId: o.case_id,
+      fileId: str(o.file_id),
+      page: num(o.page),
+      pages: num(o.pages),
+    };
+  }
+
+  if (tool === "search_pdf_text" && typeof o.case_id === "string") {
+    return {
+      kind: "pdfSearch",
+      caseId: o.case_id,
+      fileId: str(o.file_id),
+      query: str(o.query),
+      hits: Array.isArray(o.results) ? o.results.length : 0,
+    };
   }
 
   if (tool === "submit_answer" && typeof o.case_id === "string") {

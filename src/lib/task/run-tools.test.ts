@@ -2,8 +2,25 @@ import { describe, expect, it, vi } from "vitest";
 import { buildRunTools, type RunToolDeps } from "./run-tools";
 
 const CASES = [
-  { id: "c1", description: "first", question: "walk or drive?" },
+  { id: "c1", description: "only DRIVE passes", question: "walk or drive?", files: [] },
   { id: "c2", description: "second", question: "second question" },
+];
+
+const PDF_CASES = [
+  {
+    id: "pdf_case",
+    description: "contains the answer",
+    question: "",
+    files: [
+      {
+        id: "inputs/pdf_case/source.pdf",
+        name: "source.pdf",
+        path: "inputs/pdf_case/source.pdf",
+        url: "https://raw.example/source.pdf",
+        kind: "pdf" as const,
+      },
+    ],
+  },
 ];
 
 function deps(over: Partial<RunToolDeps> = {}): RunToolDeps {
@@ -19,6 +36,20 @@ function deps(over: Partial<RunToolDeps> = {}): RunToolDeps {
     reason: () => null,
     cases: () => CASES,
     results: () => results,
+    readPdfPageText: vi.fn(async (caseId: string, fileId: string, page: number) => ({
+      case_id: caseId,
+      file_id: fileId,
+      page,
+      pages: 2,
+      text: "the page text",
+    })),
+    searchPdfText: vi.fn(async (caseId: string, fileId: string, query: string) => ({
+      case_id: caseId,
+      file_id: fileId,
+      query,
+      pages: 2,
+      results: [{ page: 1, snippet: "a matching snippet" }],
+    })),
     judge: vi.fn(async (caseId: string, answer: string) => {
       const r = { case_id: caseId, passed: /^drive/i.test(answer.trim()), score: 0, metrics: {} };
       r.score = r.passed ? 1 : 0;
@@ -47,7 +78,8 @@ describe("get_next_case", () => {
     expect(out).toMatchObject({ case_id: "c1", index: 1, total: 2, question: "walk or drive?" });
     // The whole point of the exercise: an agent handed the expected answer
     // scores full marks and the result means nothing.
-    expect(JSON.stringify(out)).not.toMatch(/expected|verdict|gold|answer_key/i);
+    expect(JSON.stringify(out)).not.toMatch(/expected|verdict|gold|answer_key|only DRIVE passes/i);
+    expect(out).not.toHaveProperty("description");
   });
 
   it("moves on once a case has been answered", async () => {
@@ -123,6 +155,59 @@ describe("submit_answer", () => {
   });
 });
 
+describe("PDF tools", () => {
+  it("lists case files without fetching their contents", async () => {
+    const d = deps({ cases: () => PDF_CASES });
+    const out = (await tool(d, "list_case_files").execute({ case_id: "pdf_case" })) as {
+      files: Array<{ file_id: string; name: string; kind: string }>;
+    };
+
+    expect(out.files).toEqual([
+      { file_id: "inputs/pdf_case/source.pdf", name: "source.pdf", kind: "pdf" },
+    ]);
+    expect(d.readPdfPageText).not.toHaveBeenCalled();
+  });
+
+  it("reads one PDF page on demand", async () => {
+    const d = deps({ cases: () => PDF_CASES });
+    const out = await tool(d, "read_pdf_page_text").execute({
+      case_id: "pdf_case",
+      file_id: "inputs/pdf_case/source.pdf",
+      page: 2,
+    });
+
+    expect(d.readPdfPageText).toHaveBeenCalledWith("pdf_case", "inputs/pdf_case/source.pdf", 2);
+    expect(out).toMatchObject({ page: 2, pages: 2, text: "the page text" });
+  });
+
+  it("searches PDF text on demand", async () => {
+    const d = deps({ cases: () => PDF_CASES });
+    const out = await tool(d, "search_pdf_text").execute({
+      case_id: "pdf_case",
+      file_id: "inputs/pdf_case/source.pdf",
+      query: "matching",
+    });
+
+    expect(d.searchPdfText).toHaveBeenCalledWith(
+      "pdf_case",
+      "inputs/pdf_case/source.pdf",
+      "matching",
+    );
+    expect(out).toMatchObject({ results: [{ page: 1, snippet: "a matching snippet" }] });
+  });
+
+  it("refuses a PDF file id that is not on the case", async () => {
+    const d = deps({ cases: () => PDF_CASES });
+    expect(
+      await tool(d, "read_pdf_page_text").execute({
+        case_id: "pdf_case",
+        file_id: "missing.pdf",
+        page: 1,
+      }),
+    ).toMatchObject({ error: expect.stringContaining("missing.pdf") });
+  });
+});
+
 describe("tool descriptors", () => {
   it("declares every tool with a closed schema", () => {
     const tools = buildRunTools(deps());
@@ -130,6 +215,9 @@ describe("tool descriptors", () => {
     expect(tools.map((t) => t.name)).toEqual([
       "start_run",
       "get_next_case",
+      "list_case_files",
+      "read_pdf_page_text",
+      "search_pdf_text",
       "submit_answer",
     ]);
     for (const t of tools) {
