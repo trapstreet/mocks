@@ -175,3 +175,31 @@ describe("start_run", () => {
     expect(d.persona()).toBe("");
   });
 });
+
+describe("naming the configuration without being asked", () => {
+  // An agent whose prompt never mentioned start_run answers the task
+  // perfectly and has the run dropped — which reads as a fault in the page
+  // rather than a missing name. The tool layer says so instead.
+  it("tells an unnamed agent what it is about to lose", async () => {
+    const out = (await tool(deps(), "get_next_case").execute({})) as {
+      configuration?: string;
+      running_as?: string;
+    };
+
+    expect(out.configuration).toMatch(/start_run/);
+    expect(out.configuration).toMatch(/NOT recorded/);
+    expect(out.running_as).toBeUndefined();
+  });
+
+  it("says nothing about it once a configuration has a name", async () => {
+    const d = deps();
+    d.setPersona("gpt-5.5 baseline");
+    const out = (await tool(d, "get_next_case").execute({})) as {
+      configuration?: string;
+      running_as?: string;
+    };
+
+    expect(out.configuration).toBeUndefined();
+    expect(out.running_as).toBe("gpt-5.5 baseline");
+  });
+});

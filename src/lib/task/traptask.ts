@@ -77,6 +77,26 @@ export function assessRunnable(input: {
   // conforming task does today, but a future one need not. `declared_outputs`
   // is NOT the test: it is optional, and most live tasks omit it while still
   // grading stdout, so gating on it rejected ten runnable tasks.
+  // A judge that asks for a link to evidence made somewhere else is trusting
+  // the solution's own account of what it did. On trapstreet that is sound:
+  // a run there carries provenance, and the video is a public artefact anyone
+  // can check. Offered on an anonymous page it is not a benchmark at all —
+  // both Minecraft tasks would be answered by typing
+  // {"obtained": true, "video": "..."} without a block being mined.
+  //
+  // Detected from the judge's own source rather than from a list of task ids,
+  // like every other rule here: across the live boards this matches exactly
+  // the two tasks whose judges read a `video` field, and nothing else.
+  if (/["'](video|recording|screencast|proof_url|evidence)["']/.test(judgeSrc)) {
+    return {
+      runnable: false,
+      reason:
+        "its judge trusts what the solution reports about itself and asks for a " +
+        "video of the run as proof — an attempt typed into a page would be a " +
+        "claim, not a result",
+    };
+  }
+
   if (!/stdout/.test(judgeSrc)) {
     return {
       runnable: false,

@@ -68,6 +68,36 @@ describe("assessRunnable", () => {
     expect(assessRunnable(base)).toEqual({ runnable: true, packages: [] });
   });
 
+  // Both Minecraft tasks are graded from what the solution says about itself,
+  // with a video link as the credibility floor. That works on trapstreet,
+  // where a run carries provenance and the video is a public artefact anyone
+  // can check. On an anonymous page it is not a benchmark: the diamond is
+  // obtained by typing {"obtained": true, "video": "..."}.
+  it("refuses a judge that trusts a self-report backed by a video link", () => {
+    const why = refusal(
+      assessRunnable({
+        ...base,
+        judgeSrc:
+          base.judgeSrc +
+          'if not outcome.get("video"):\n    return {"score": 0.0}\n',
+      }),
+    );
+
+    expect(why).toMatch(/video/);
+    expect(why).toMatch(/claim, not a result/);
+  });
+
+  // The rule keys on the judge asking for evidence, not on the word appearing
+  // anywhere — a task about video content is still gradable here.
+  it("does not refuse a judge that merely mentions video in prose", () => {
+    expect(
+      assessRunnable({
+        ...base,
+        judgeSrc: base.judgeSrc + "# the answer describes a video frame\n",
+      }).runnable,
+    ).toBe(true);
+  });
+
   // A browser has no way to produce a file the task grades.
   it("refuses a judge that never looks at the solution's stdout", () => {
     expect(refusal(assessRunnable({

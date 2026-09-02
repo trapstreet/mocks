@@ -119,6 +119,18 @@ export function buildRunTools(deps: RunToolDeps): ToolDescriptor[] {
           total: cases.length,
           description: c.description,
           question: c.question,
+          // Said here rather than left to whoever wrote the prompt. An agent
+          // that was never told about start_run answers the task perfectly
+          // and the run is dropped, which looks like a fault in the page.
+          ...(deps.persona().trim()
+            ? { running_as: deps.persona() }
+            : {
+                configuration:
+                  "unnamed — this run will be scored but NOT recorded on the " +
+                  "board. Call start_run with a short name for your setup " +
+                  "(model, and any prompt, skill or harness in front of it) " +
+                  "before you submit, and it will be.",
+              }),
         };
       },
     },
