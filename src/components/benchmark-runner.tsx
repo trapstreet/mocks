@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { buildRunTools } from "@/lib/task/run-tools";
 import { traceRunTools, abbreviate, type TraceStep } from "@/lib/task/trace";
+import { caseListSummary, startsOpen } from "@/lib/task/case-list";
 import { VerdictPanel } from "./verdict-panel";
 import { createJudgeRunner, type CaseResult, type PyRuntime } from "@/lib/task/judge-runner";
 import { createPdfReader } from "@/lib/task/pdf-reader";
@@ -59,6 +60,10 @@ export function BenchmarkRunner({ taskId }: { taskId: string }) {
   // the agent itself through start_run. Without one a run is still scored —
   // it just has nothing to be compared against, so it is not recorded.
   const [persona, setPersona] = useState("");
+  // A long case list collapses: twenty-three questions and twenty-three answer
+  // boxes put the board far enough down the page that people stopped reaching
+  // it. Null until the task is known, then the task's own length decides.
+  const [openList, setOpenList] = useState<boolean | null>(null);
   const [saved, setSaved] = useState<null | { ok: boolean; detail: string }>(null);
   const [hasAgent, setHasAgent] = useState(false);
   const push = useCallback((s: TraceStep) => setSteps((prev) => [...prev, s]), []);
@@ -92,6 +97,7 @@ export function BenchmarkRunner({ taskId }: { taskId: string }) {
           return;
         }
         setPayload(body);
+        setOpenList(startsOpen(body.cases?.length ?? 0));
         setPhase(body.runnable ? "ready" : "unavailable");
       } catch (e) {
         if (!cancelled) {
@@ -320,7 +326,10 @@ export function BenchmarkRunner({ taskId }: { taskId: string }) {
             <span>
               {answered}/{cases.length} answered
             </span>
-            <span>{passed} passed</span>
+            {/* Withheld until the grader has scored the set, for the same
+                reason submit_answer withholds it: a running pass count on
+                screen is feedback a person can relay to the agent. */}
+            {final && <span>{passed} passed</span>}
             {final && (
               <span className="text-[var(--head)]">
                 grader: {final.score.toFixed(3)} · {final.passed ? "passed" : "failed"}
@@ -429,7 +438,33 @@ export function BenchmarkRunner({ taskId }: { taskId: string }) {
             )}
           </div>
 
-          <ol className="flex flex-col gap-3">
+          <div className="flex items-baseline justify-between gap-4 border-y border-[var(--bd)] py-2.5 font-mono text-[12px]">
+            <span className="text-[var(--mut)]">
+              {caseListSummary({
+                total: cases.length,
+                answered,
+                passed,
+                graded: final !== null,
+              })}
+            </span>
+            <button
+              type="button"
+              onClick={() => setOpenList((v) => !v)}
+              className="shrink-0 text-[var(--accT)] hover:text-[var(--head)]"
+            >
+              {openList ? "hide the questions" : "show the questions"}
+            </button>
+          </div>
+
+          {!openList && (
+            <p className="text-[13px] leading-[1.6] text-[var(--mut)]">
+              The questions are hidden so the results stay within reach. An
+              agent reads them through <code>get_next_case</code> either way —
+              open them to read along, or to answer by hand.
+            </p>
+          )}
+
+          <ol className={`flex-col gap-3 ${openList ? "flex" : "hidden"}`}>
             {cases.map((c, i) => {
               const r = byId.get(c.id);
               return (
