@@ -40,6 +40,11 @@ export async function RunBoard({ taskId }: { taskId: string }) {
   // hands every well-formed answer a 1.0, so the scores are identical and the
   // types are not.
   const resultKey = configs.find((c) => c.result)?.result?.key ?? null;
+  // "range" is the spread across repeated runs of one configuration, so until
+  // somebody runs the same setup twice it is a column of dashes — and with the
+  // explaining paragraph gone it was a column of dashes under a word nobody
+  // could decode. It appears when it has something to say.
+  const anyRepeated = configs.some((c) => c.runs > 1);
 
   return (
     <section className="flex flex-col gap-3 border-t border-[var(--bd)] pt-6">
@@ -57,8 +62,11 @@ export async function RunBoard({ taskId }: { taskId: string }) {
                   {resultKey.replace(/_/g, " ")}
                 </th>
               )}
-              <th className="py-2 pr-4 text-right font-normal">median</th>
-              <th className="py-2 pr-4 text-right font-normal">range</th>
+              <th className="py-2 pr-4 text-right font-normal">score</th>
+              <th className="py-2 pr-4 text-right font-normal">cases passed</th>
+              {anyRepeated && (
+                <th className="py-2 pr-4 text-right font-normal">across runs</th>
+              )}
               <th className="py-2 pr-4 text-right font-normal">runs</th>
               <th className="py-2 text-right font-normal">latest</th>
             </tr>
@@ -80,13 +88,16 @@ export async function RunBoard({ taskId }: { taskId: string }) {
                 <td className="py-2.5 pr-4 text-right text-[14px] text-[var(--sec)]">
                   {c.median === null ? "—" : pct(c.median)}
                 </td>
-                <td className="py-2.5 pr-4 text-right text-[var(--mut)]">
-                  {c.best === null || c.worst === null
-                    ? "—"
-                    : c.runs === 1
+                <td className="py-2.5 pr-4 text-right text-[14px] text-[var(--head)]">
+                  {c.cases ? `${c.cases.passed}/${c.cases.total}` : "—"}
+                </td>
+                {anyRepeated && (
+                  <td className="py-2.5 pr-4 text-right text-[var(--mut)]">
+                    {c.best === null || c.worst === null || c.runs === 1
                       ? "—"
                       : `${pct(c.worst)}–${pct(c.best)}`}
-                </td>
+                  </td>
+                )}
                 <td className="py-2.5 pr-4 text-right text-[var(--sec)]">{c.runs}</td>
                 <td className="py-2.5 text-right text-[var(--mut)]">{when(c.latest)}</td>
               </tr>

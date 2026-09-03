@@ -152,3 +152,21 @@ describe("the headline result", () => {
     expect(out[0].result).toBeNull();
   });
 });
+
+describe("cases passed", () => {
+  // A score alone does not say how many cases were right: 0.61 can come from
+  // fourteen clean passes or from twenty-three near misses, and a person
+  // reading the board wants the count.
+  it("reports the latest run's passed-of-total", () => {
+    const out = byPersona([
+      run({ cases_passed: 14, cases_total: 23, started_at: "2026-09-03T09:31:00Z" }),
+      run({ cases_passed: 3, cases_total: 23, started_at: "2026-09-03T08:00:00Z" }),
+    ]);
+
+    expect(out[0].cases).toEqual({ passed: 14, total: 23 });
+  });
+
+  it("has nothing to report for a run that recorded no cases", () => {
+    expect(byPersona([run({ cases_total: 0 })])[0].cases).toBeNull();
+  });
+});

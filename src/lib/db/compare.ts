@@ -34,6 +34,13 @@ export interface PersonaSummary {
    * belongs to the whole run.
    */
   result: { key: string; value: string } | null;
+  /**
+   * How many cases the most recent run of this configuration got right. The
+   * score alone does not say it — a task with partial credit can score 0.61
+   * from fourteen clean passes or from twenty-three near misses, and those are
+   * not the same run. Taken from the latest run, like `result`.
+   */
+  cases: { passed: number; total: number } | null;
 }
 
 export function median(values: number[]): number | null {
@@ -43,8 +50,12 @@ export function median(values: number[]): number | null {
   return s.length % 2 ? s[mid] : (s[mid - 1] + s[mid]) / 2;
 }
 
+function newest(rs: RunRow[]): RunRow {
+  return rs.reduce((a, r) => (r.started_at > a.started_at ? r : a), rs[0]);
+}
+
 function headlineResult(rs: RunRow[]): { key: string; value: string } | null {
-  const latest = rs.reduce((a, r) => (r.started_at > a.started_at ? r : a), rs[0]);
+  const latest = newest(rs);
   if (latest.cases_total !== 1 || !latest.metrics) return null;
   // Sorted by shape, exactly as the verdict panel does it — nothing here
   // knows what an MBTI type is, only that the judge surfaced a scalar.
@@ -75,6 +86,10 @@ export function byPersona(rows: RunRow[]): PersonaSummary[] {
       latest: rs.reduce((a, r) => (r.started_at > a ? r.started_at : a), rs[0].started_at),
       people: [...new Set(rs.map((r) => r.user_login).filter((n): n is string => !!n))],
       result: headlineResult(rs),
+      cases:
+        newest(rs).cases_total > 0
+          ? { passed: newest(rs).cases_passed, total: newest(rs).cases_total }
+          : null,
     });
   }
 
