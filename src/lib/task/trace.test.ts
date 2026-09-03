@@ -95,6 +95,24 @@ describe("traceRunTools", () => {
           query: "treasury custody",
           results: [{ page: 3, snippet: "Treasury" }],
         }),
+        tool("render_pdf_page_image", {
+          case_id: "case_01",
+          file_id: "document.pdf",
+          page: 4,
+          pages: 11,
+          width: 1200,
+          height: 1600,
+          image_data_url: "data:image/png;base64,page",
+        }),
+        tool("render_pdf_page_region", {
+          case_id: "case_01",
+          file_id: "document.pdf",
+          page: 4,
+          pages: 11,
+          width: 600,
+          height: 400,
+          image_data_url: "data:image/png;base64,region",
+        }),
       ],
       push,
     );
@@ -102,6 +120,8 @@ describe("traceRunTools", () => {
     await tools[0].execute({ case_id: "case_01" });
     await tools[1].execute({ case_id: "case_01", file_id: "document.pdf", page: 3 });
     await tools[2].execute({ case_id: "case_01", file_id: "document.pdf", query: "x" });
+    await tools[3].execute({ case_id: "case_01", file_id: "document.pdf", page: 4 });
+    await tools[4].execute({ case_id: "case_01", file_id: "document.pdf", page: 4 });
 
     expect(steps).toEqual([
       { kind: "files", caseId: "case_01", count: 1 },
@@ -112,6 +132,24 @@ describe("traceRunTools", () => {
         fileId: "document.pdf",
         query: "treasury custody",
         hits: 1,
+      },
+      {
+        kind: "pdfImage",
+        caseId: "case_01",
+        fileId: "document.pdf",
+        page: 4,
+        pages: 11,
+        width: 1200,
+        height: 1600,
+      },
+      {
+        kind: "pdfRegion",
+        caseId: "case_01",
+        fileId: "document.pdf",
+        page: 4,
+        pages: 11,
+        width: 600,
+        height: 400,
       },
     ]);
   });

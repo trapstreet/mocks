@@ -238,6 +238,10 @@ export function BenchmarkRunner({ taskId }: { taskId: string }) {
         results: () => resultsRef.current,
         readPdfPageText: (caseId, fileId, page) => pdfRef.current!.readPage(caseId, fileId, page),
         searchPdfText: (caseId, fileId, query) => pdfRef.current!.search(caseId, fileId, query),
+        renderPdfPageImage: (caseId, fileId, page, scale) =>
+          pdfRef.current!.renderPage(caseId, fileId, page, scale),
+        renderPdfPageRegion: (caseId, fileId, page, region, scale) =>
+          pdfRef.current!.renderRegion(caseId, fileId, page, region, scale),
         judge,
         grade,
       }),
@@ -398,6 +402,18 @@ export function BenchmarkRunner({ taskId }: { taskId: string }) {
                       <span>
                         searched PDF for <span className="text-[var(--head)]">{s.query}</span> ·{" "}
                         {s.hits} hits
+                      </span>
+                    )}
+                    {s.kind === "pdfImage" && (
+                      <span>
+                        rendered PDF page <span className="text-[var(--head)]">{s.page}</span>/
+                        {s.pages} · {s.width}x{s.height}
+                      </span>
+                    )}
+                    {s.kind === "pdfRegion" && (
+                      <span>
+                        rendered PDF region <span className="text-[var(--head)]">{s.page}</span> ·{" "}
+                        {s.width}x{s.height}
                       </span>
                     )}
                     {s.kind === "answer" && (

@@ -50,6 +50,34 @@ function deps(over: Partial<RunToolDeps> = {}): RunToolDeps {
       pages: 2,
       results: [{ page: 1, snippet: "a matching snippet" }],
     })),
+    renderPdfPageImage: vi.fn(async (caseId: string, fileId: string, page: number) => ({
+      case_id: caseId,
+      file_id: fileId,
+      page,
+      pages: 2,
+      width: 1200,
+      height: 1600,
+      scale: 1.5,
+      image_data_url: "data:image/png;base64,page",
+    })),
+    renderPdfPageRegion: vi.fn(
+      async (
+        caseId: string,
+        fileId: string,
+        page: number,
+        region: { x: number; y: number; width: number; height: number },
+      ) => ({
+        case_id: caseId,
+        file_id: fileId,
+        page,
+        pages: 2,
+        region,
+        width: 600,
+        height: 400,
+        scale: 1.5,
+        image_data_url: "data:image/png;base64,region",
+      }),
+    ),
     judge: vi.fn(async (caseId: string, answer: string) => {
       const r = { case_id: caseId, passed: /^drive/i.test(answer.trim()), score: 0, metrics: {} };
       r.score = r.passed ? 1 : 0;
@@ -196,6 +224,47 @@ describe("PDF tools", () => {
     expect(out).toMatchObject({ results: [{ page: 1, snippet: "a matching snippet" }] });
   });
 
+  it("renders one PDF page as an image on demand", async () => {
+    const d = deps({ cases: () => PDF_CASES });
+    const out = await tool(d, "render_pdf_page_image").execute({
+      case_id: "pdf_case",
+      file_id: "inputs/pdf_case/source.pdf",
+      page: 2,
+      scale: 2,
+    });
+
+    expect(d.renderPdfPageImage).toHaveBeenCalledWith(
+      "pdf_case",
+      "inputs/pdf_case/source.pdf",
+      2,
+      2,
+    );
+    expect(out).toMatchObject({ width: 1200, height: 1600, image_data_url: expect.stringMatching(/^data:image\/png/) });
+  });
+
+  it("renders one PDF page region as an image on demand", async () => {
+    const d = deps({ cases: () => PDF_CASES });
+    const out = await tool(d, "render_pdf_page_region").execute({
+      case_id: "pdf_case",
+      file_id: "inputs/pdf_case/source.pdf",
+      page: 2,
+      x: 0.1,
+      y: 0.2,
+      width: 0.4,
+      height: 0.3,
+      scale: 2,
+    });
+
+    expect(d.renderPdfPageRegion).toHaveBeenCalledWith(
+      "pdf_case",
+      "inputs/pdf_case/source.pdf",
+      2,
+      { x: 0.1, y: 0.2, width: 0.4, height: 0.3 },
+      2,
+    );
+    expect(out).toMatchObject({ width: 600, height: 400, image_data_url: expect.stringMatching(/^data:image\/png/) });
+  });
+
   it("refuses a PDF file id that is not on the case", async () => {
     const d = deps({ cases: () => PDF_CASES });
     expect(
@@ -218,6 +287,8 @@ describe("tool descriptors", () => {
       "list_case_files",
       "read_pdf_page_text",
       "search_pdf_text",
+      "render_pdf_page_image",
+      "render_pdf_page_region",
       "submit_answer",
     ]);
     for (const t of tools) {

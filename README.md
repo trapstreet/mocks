@@ -28,13 +28,16 @@ task only when the browser cannot honestly run what the judge is asking for.
 
 Page | Tools
 --- | ---
-`/tasks/<id>` | `start_run`, `get_next_case`, `list_case_files`, `read_pdf_page_text`, `search_pdf_text`, `submit_answer`
+`/tasks/<id>` | `start_run`, `get_next_case`, `list_case_files`, `read_pdf_page_text`, `search_pdf_text`, `render_pdf_page_image`, `render_pdf_page_region`, `submit_answer`
 `/arena` | `search_wiki`, `read_section`, `answer_question`
 
 `get_next_case` returns the case prompt, position, and file list. It does not
 return manifest descriptions, expected answers, verdicts, gold labels, or raw
 file URLs. PDF contents stay out of the main payload: an agent lists files, then
-reads one PDF page or searches page text through separate read-only tools.
+reads/searches text or renders page images through separate read-only tools.
+
+The PDF tools expose the task input faithfully. They do not OCR a page, count
+points in a chart, extract a field, infer a table, or otherwise solve the task.
 
 `submit_answer` runs the task's own judge against exactly what a solution would
 print to stdout. When every case has an answer, the task's grader scores the set.
@@ -45,7 +48,7 @@ Boundary | What happens
 --- | ---
 Trapstreet data | Reads only trapstreet's public API and public GitHub task files. No trapstreet database, credentials, or platform source.
 Expected answers | Kept in page state so the judge can run, but never returned by WebMCP tools.
-PDF inputs | Exposed as files and read on demand, not embedded as megabytes of JSON.
+PDF inputs | Exposed as files and read/rendered on demand, not embedded as megabytes of JSON.
 Anonymous board writes | Shape-checked, length-limited, rate-limited per IP, and exact duplicate submissions are rejected for a short window.
 Browser execution | Pyodide loads only on first answer. Obvious blocking judges are refused until judge execution moves to a worker with a hard timeout.
 
