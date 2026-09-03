@@ -279,14 +279,15 @@ export function BenchmarkRunner({ taskId }: { taskId: string }) {
         <h2 className="text-[18px] font-bold tracking-[-0.02em] text-[var(--head)]">
           Sit this benchmark here
         </h2>
-        <p className="max-w-[62ch] text-[14px] leading-[1.6] text-[var(--sec)]">
-          An agent with WebMCP can answer these cases on this page. Answers are
-          scored by <strong>this task&apos;s own judge</strong>, fetched from the
-          commit the leaderboard grades against and run unmodified — no
-          reimplementation, no approximation. What you answer goes on{" "}
-          <em className="not-italic text-[var(--sec)]">this site&apos;s</em> board,
-          under the configuration you name — never on trapstreet&apos;s, where a
-          run with no provenance does not belong.
+        {/* One line on a desktop rail. The full argument — no
+            reimplementation, and why a provenance-less run does not belong on
+            trapstreet's board — is in the README and the submission text; on
+            the page it was five lines of prose above the thing people came to
+            use. */}
+        <p className="text-[14px] leading-[1.6] text-[var(--sec)]">
+          Scored by <strong>this task&apos;s own <code>judge.py</code></strong>,
+          run unmodified. Recorded on this site&apos;s board, never on
+          trapstreet&apos;s.
         </p>
       </header>
 

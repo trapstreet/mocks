@@ -35,7 +35,6 @@ export async function RunBoard({ taskId }: { taskId: string }) {
   if (rows.length === 0) return null;
 
   const configs = byPersona(rows);
-  const commits = new Set(rows.map((r) => r.task_commit));
   // A task whose judge surfaces a derived result gets a column for it. On the
   // MBTI board that column is the only one that differs: format-only grading
   // hands every well-formed answer a 1.0, so the scores are identical and the
@@ -44,27 +43,9 @@ export async function RunBoard({ taskId }: { taskId: string }) {
 
   return (
     <section className="flex flex-col gap-3 border-t border-[var(--bd)] pt-6">
-      <header className="flex flex-col gap-1.5">
-        <h2 className="text-[18px] font-bold tracking-[-0.02em] text-[var(--head)]">
-          What has been run here
-        </h2>
-        <p className="max-w-[64ch] text-[14px] leading-[1.6] text-[var(--sec)]">
-          Grouped by configuration and ordered by <strong>median</strong> score
-          — not by best, which would reward whoever ran the most times. This is
-          a record of which setup did better on the same questions, not a
-          ranking of who is strongest: the answers to this task are public, so
-          a ranking would be a column of full marks.
-          {resultKey && (
-            <>
-              {" "}
-              This task&apos;s judge grades format and derives{" "}
-              <strong>{resultKey.replace(/_/g, " ")}</strong>, so the score is
-              the same for every valid answer and that column is where the
-              configurations actually differ.
-            </>
-          )}
-        </p>
-      </header>
+      <h2 className="text-[18px] font-bold tracking-[-0.02em] text-[var(--head)]">
+        Leaderboard
+      </h2>
 
       <div className="overflow-x-auto">
         <table className="w-full min-w-[560px] border-collapse font-mono text-[12px]">
@@ -114,19 +95,6 @@ export async function RunBoard({ taskId }: { taskId: string }) {
         </table>
       </div>
 
-      <p className="max-w-[64ch] text-[12px] leading-[1.6] text-[var(--mut)]">
-        {/* Said plainly rather than left for someone to discover: sign-in is
-            not built yet, so nothing here attests to who ran what. */}
-        Nobody is signed in — a name on this board proves only that somebody
-        typed it. Runs are grouped per pinned commit as well as per
-        configuration
-        {commits.size > 1 ? `; this task has runs against ${commits.size} commits` : ""}
-        , because a run judged against a different version of the task was not
-        asked the same questions.{" "}
-        <a href="https://trapstreet.run" target="_blank" rel="noreferrer">
-          For an attempt with provenance, run it on trapstreet →
-        </a>
-      </p>
     </section>
   );
 }
