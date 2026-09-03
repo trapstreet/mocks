@@ -454,7 +454,7 @@ export function BenchmarkRunner({ taskId }: { taskId: string }) {
                       {c.files.map((f) => (
                         <a
                           key={f.id}
-                          href={f.url}
+                          href={f.kind === "pdf" ? f.view_url : f.url}
                           target="_blank"
                           rel="noreferrer"
                           className="break-all text-[var(--sec)]"

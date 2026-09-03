@@ -153,6 +153,7 @@ export function buildRunTools(deps: RunToolDeps): ToolDescriptor[] {
             file_id: f.id,
             name: f.name,
             kind: f.kind,
+            ...(f.kind === "pdf" ? { view_url: f.view_url } : {}),
           })),
           // Said here rather than left to whoever wrote the prompt. An agent
           // that was never told about start_run answers the task perfectly
@@ -199,6 +200,7 @@ export function buildRunTools(deps: RunToolDeps): ToolDescriptor[] {
             file_id: f.id,
             name: f.name,
             kind: f.kind,
+            ...(f.kind === "pdf" ? { view_url: f.view_url } : {}),
           })),
           note:
             c.files?.some((f) => f.kind === "pdf")

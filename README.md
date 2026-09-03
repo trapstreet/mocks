@@ -33,8 +33,10 @@ Page | Tools
 
 `get_next_case` returns the case prompt, position, and file list. It does not
 return manifest descriptions, expected answers, verdicts, gold labels, or raw
-file URLs. PDF contents stay out of the main payload: an agent lists files, then
-reads one PDF page or searches page text through separate read-only tools.
+file URLs. PDF files include a GitHub viewer URL so an agent can inspect the
+page visually with its browser. PDF contents stay out of the main payload: an
+agent lists files, then reads one PDF page or searches page text through
+separate read-only tools.
 
 `submit_answer` runs the task's own judge against exactly what a solution would
 print to stdout. When every case has an answer, the task's grader scores the set.

@@ -110,6 +110,7 @@ describe("fetchTaskBundle", () => {
         name: "source.pdf",
         path: "inputs/c1/source.pdf",
         url: `https://raw.githubusercontent.com/owner/repo/${PIN.commit_sha}/tasks/demo/inputs/c1/source.pdf`,
+        view_url: `https://github.com/owner/repo/blob/${PIN.commit_sha}/tasks/demo/inputs/c1/source.pdf`,
         kind: "pdf",
       },
     ]);

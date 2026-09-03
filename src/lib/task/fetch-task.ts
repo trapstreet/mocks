@@ -34,6 +34,7 @@ export interface CaseInputFile {
   name: string;
   path: string;
   url: string;
+  view_url: string;
   kind: "text" | "pdf";
 }
 
@@ -75,6 +76,8 @@ export async function fetchTaskBundle(
   const prefix = pin.repo_path ? `${pin.repo_path}/` : "";
   const raw = (p: string) =>
     `https://raw.githubusercontent.com/${owner(pin.repo_url)}/${pin.commit_sha}/${prefix}${p}`;
+  const view = (p: string) =>
+    `https://github.com/${owner(pin.repo_url)}/blob/${pin.commit_sha}/${prefix}${p}`;
 
   let lastStatus = 0;
   const text = async (p: string): Promise<string | null> => {
@@ -166,6 +169,7 @@ export async function fetchTaskBundle(
           name: f.split("/").pop() ?? f,
           path: f,
           url: raw(f),
+          view_url: view(f),
           kind: PDF.test(f) ? "pdf" : "text",
         }));
       // The question is whatever text the case ships. Concatenated in path

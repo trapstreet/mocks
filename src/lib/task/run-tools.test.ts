@@ -17,6 +17,7 @@ const PDF_CASES = [
         name: "source.pdf",
         path: "inputs/pdf_case/source.pdf",
         url: "https://raw.example/source.pdf",
+        view_url: "https://github.example/source.pdf",
         kind: "pdf" as const,
       },
     ],
@@ -159,12 +160,18 @@ describe("PDF tools", () => {
   it("lists case files without fetching their contents", async () => {
     const d = deps({ cases: () => PDF_CASES });
     const out = (await tool(d, "list_case_files").execute({ case_id: "pdf_case" })) as {
-      files: Array<{ file_id: string; name: string; kind: string }>;
+      files: Array<{ file_id: string; name: string; kind: string; view_url?: string }>;
     };
 
     expect(out.files).toEqual([
-      { file_id: "inputs/pdf_case/source.pdf", name: "source.pdf", kind: "pdf" },
+      {
+        file_id: "inputs/pdf_case/source.pdf",
+        name: "source.pdf",
+        kind: "pdf",
+        view_url: "https://github.example/source.pdf",
+      },
     ]);
+    expect(JSON.stringify(out)).not.toContain("raw.example");
     expect(d.readPdfPageText).not.toHaveBeenCalled();
   });
 
