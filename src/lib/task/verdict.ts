@@ -37,6 +37,13 @@ const CONTRACT = new Set([
   "usd_cost",
 ]);
 
+/**
+ * Keys that describe the CASE rather than the answer. They are worth showing
+ * on a per-case panel — `category: read_length` says what that question was
+ * probing — but they must never be mistaken for the judge's derived result.
+ */
+export const CASE_METADATA = new Set(["category", "difficulty", "capability"]);
+
 export interface Gauge {
   name: string;
   entries: Array<{ label: string; pct: number }>;

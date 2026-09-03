@@ -170,3 +170,27 @@ describe("cases passed", () => {
     expect(byPersona([run({ cases_total: 0 })])[0].cases).toBeNull();
   });
 });
+
+describe("what counts as the derived result", () => {
+  // Postgres jsonb does not preserve key order — it sorts by key length — so
+  // the 8-character `category` floated above the 9-character `mbti_type` on
+  // the way back out, and the board showed "personality" where "INTJ"
+  // belonged. Nothing may depend on the order a judge printed its keys.
+  it("skips case metadata however the keys happen to be ordered", () => {
+    const out = byPersona([
+      run({
+        cases_total: 1,
+        metrics: { category: "personality", difficulty: "hard", mbti_type: "INTJ" },
+      }),
+    ]);
+
+    expect(out[0].result).toEqual({ key: "mbti_type", value: "INTJ" });
+  });
+
+  it("has no result when metadata is all the judge surfaced", () => {
+    const out = byPersona([
+      run({ cases_total: 1, metrics: { category: "read_length", difficulty: "hard" } }),
+    ]);
+    expect(out[0].result).toBeNull();
+  });
+});

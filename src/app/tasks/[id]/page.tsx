@@ -53,7 +53,7 @@ export default async function TaskPage({ params }: { params: Promise<{ id: strin
         )}
       </header>
       <BenchmarkRunner taskId={task.id} />
-      <RunBoard taskId={task.id} />
+      <RunBoard taskId={task.id} ranked={task.rankingMetric !== "none"} />
     </div>
   );
 }

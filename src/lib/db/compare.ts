@@ -1,4 +1,4 @@
-import { summarizeVerdict } from "../task/verdict";
+import { summarizeVerdict, CASE_METADATA } from "../task/verdict";
 import type { RunRow } from "./runs";
 
 // Turning a list of runs into the comparison the board exists to show.
@@ -57,9 +57,18 @@ function newest(rs: RunRow[]): RunRow {
 function headlineResult(rs: RunRow[]): { key: string; value: string } | null {
   const latest = newest(rs);
   if (latest.cases_total !== 1 || !latest.metrics) return null;
-  // Sorted by shape, exactly as the verdict panel does it — nothing here
-  // knows what an MBTI type is, only that the judge surfaced a scalar.
-  return summarizeVerdict(latest.metrics).facets[0] ?? null;
+  // Sorted by shape, exactly as the verdict panel does it — nothing here knows
+  // what an MBTI type is, only that the judge surfaced a scalar.
+  //
+  // Case metadata is skipped rather than ranked below: `category: personality`
+  // is not a result. It took the board showing "personality" where "INTJ"
+  // belonged to notice, because Postgres `jsonb` does not preserve key order —
+  // it sorts by key length, which floated the 8-character `category` above the
+  // 9-character `mbti_type` that had been first on the way in. Nothing here
+  // may depend on the order a judge printed its keys.
+  return (
+    summarizeVerdict(latest.metrics).facets.find((f) => !CASE_METADATA.has(f.key)) ?? null
+  );
 }
 
 export function byPersona(rows: RunRow[]): PersonaSummary[] {

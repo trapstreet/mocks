@@ -19,7 +19,20 @@ function when(iso: string): string {
   return new Date(iso).toISOString().slice(0, 16).replace("T", " ");
 }
 
-export async function RunBoard({ taskId }: { taskId: string }) {
+export async function RunBoard({
+  taskId,
+  ranked,
+}: {
+  taskId: string;
+  /**
+   * False when the task declares `ranking_metric: none`. Such a task is not
+   * scored against an answer key — the MBTI judge grades format and hands
+   * every valid response a 1.0 — so a score column reads 1.00 against 1.00
+   * and a cases column reads 1/1 against 1/1. The task says it does not rank;
+   * the board takes it at its word and shows what the judge derived instead.
+   */
+  ranked: boolean;
+}) {
   const db = sql();
   if (!db) return null;
 
@@ -44,7 +57,7 @@ export async function RunBoard({ taskId }: { taskId: string }) {
   // somebody runs the same setup twice it is a column of dashes — and with the
   // explaining paragraph gone it was a column of dashes under a word nobody
   // could decode. It appears when it has something to say.
-  const anyRepeated = configs.some((c) => c.runs > 1);
+  const anyRepeated = ranked && configs.some((c) => c.runs > 1);
 
   return (
     <section className="flex flex-col gap-3 border-t border-[var(--bd)] pt-6">
@@ -62,8 +75,10 @@ export async function RunBoard({ taskId }: { taskId: string }) {
                   {resultKey.replace(/_/g, " ")}
                 </th>
               )}
-              <th className="py-2 pr-4 text-right font-normal">score</th>
-              <th className="py-2 pr-4 text-right font-normal">cases passed</th>
+              {ranked && <th className="py-2 pr-4 text-right font-normal">score</th>}
+              {ranked && (
+                <th className="py-2 pr-4 text-right font-normal">cases passed</th>
+              )}
               {anyRepeated && (
                 <th className="py-2 pr-4 text-right font-normal">across runs</th>
               )}
@@ -85,12 +100,16 @@ export async function RunBoard({ taskId }: { taskId: string }) {
                     {c.result?.value ?? "—"}
                   </td>
                 )}
-                <td className="py-2.5 pr-4 text-right text-[14px] text-[var(--sec)]">
-                  {c.median === null ? "—" : pct(c.median)}
-                </td>
-                <td className="py-2.5 pr-4 text-right text-[14px] text-[var(--head)]">
-                  {c.cases ? `${c.cases.passed}/${c.cases.total}` : "—"}
-                </td>
+                {ranked && (
+                  <td className="py-2.5 pr-4 text-right text-[14px] text-[var(--sec)]">
+                    {c.median === null ? "—" : pct(c.median)}
+                  </td>
+                )}
+                {ranked && (
+                  <td className="py-2.5 pr-4 text-right text-[14px] text-[var(--head)]">
+                    {c.cases ? `${c.cases.passed}/${c.cases.total}` : "—"}
+                  </td>
+                )}
                 {anyRepeated && (
                   <td className="py-2.5 pr-4 text-right text-[var(--mut)]">
                     {c.best === null || c.worst === null || c.runs === 1
