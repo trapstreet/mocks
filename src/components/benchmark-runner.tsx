@@ -404,9 +404,8 @@ export function BenchmarkRunner({ taskId }: { taskId: string }) {
                       </span>
                     )}
                     {s.kind === "answer" && (
-                      <span className={s.passed ? "text-[var(--ok)]" : "text-[var(--bad)]"}>
-                        answered <span className="text-[var(--head)]">{s.answer}</span> ·{" "}
-                        {s.passed ? "passed" : "failed"}
+                      <span>
+                        submitted <span className="text-[var(--head)]">{s.answer}</span>
                       </span>
                     )}
                     {s.kind === "graded" && (
@@ -441,11 +440,12 @@ export function BenchmarkRunner({ taskId }: { taskId: string }) {
                     </span>
                     <span className="text-[var(--sec)]">{c.id}</span>
                     {busy === c.id && <span>judging…</span>}
-                    {r && (
+                    {r && final && (
                       <span className={r.passed ? "text-[var(--ok)]" : "text-[var(--bad)]"}>
                         {r.passed ? "passed" : "failed"} · {r.score}
                       </span>
                     )}
+                    {r && !final && <span>submitted</span>}
                   </div>
                   <pre className="max-h-[16rem] overflow-auto whitespace-pre-wrap text-[13px] leading-[1.55] text-[var(--sec)]">
                     {c.question ||
@@ -481,8 +481,6 @@ export function BenchmarkRunner({ taskId }: { taskId: string }) {
                             kind: "answer",
                             caseId: c.id,
                             answer: abbreviate(typed),
-                            passed: r.passed,
-                            score: r.score,
                           });
                           if (resultsRef.current.length >= cases.length) {
                             const fin = await grade();
@@ -515,7 +513,7 @@ export function BenchmarkRunner({ taskId }: { taskId: string }) {
                     >
                       {busy === c.id ? "judging…" : "score this answer"}
                     </button>
-                    {r && <VerdictPanel metrics={r.metrics} />}
+                    {r && final && <VerdictPanel metrics={r.metrics} />}
                     {caseError[c.id] && (
                       <p className="font-mono text-[12px] text-[var(--sec)]">
                         the judge failed on this one: {caseError[c.id]}

@@ -26,16 +26,16 @@ describe("traceRunTools", () => {
     expect(steps).toEqual([{ kind: "fetch", caseId: "baseline_32q", index: 1, total: 1 }]);
   });
 
-  it("puts an answer and its verdict on the page", async () => {
+  it("puts a submitted answer on the page without a verdict", async () => {
     const { steps, push } = collect();
     const [t] = traceRunTools(
-      [tool("submit_answer", { case_id: "c1", passed: true, score: 1, answered: 1, total: 2 })],
+      [tool("submit_answer", { case_id: "c1", recorded: true, answered: 1, total: 2 })],
       push,
     );
     await t.execute({ case_id: "c1", answer: '{"responses": [4, 2]}' });
 
     expect(steps).toEqual([
-      { kind: "answer", caseId: "c1", answer: '{"responses": [4, 2]}', passed: true, score: 1 },
+      { kind: "answer", caseId: "c1", answer: '{"responses": [4, 2]}' },
     ]);
   });
 

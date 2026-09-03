@@ -106,7 +106,7 @@ describe("get_next_case", () => {
 });
 
 describe("submit_answer", () => {
-  it("scores with the task's judge and reports progress", async () => {
+  it("records with the task's judge and reports progress without the case verdict", async () => {
     const d = deps();
     const out = (await tool(d, "submit_answer").execute({
       case_id: "c1",
@@ -114,14 +114,21 @@ describe("submit_answer", () => {
     })) as Record<string, unknown>;
 
     expect(d.judge).toHaveBeenCalledWith("c1", "DRIVE — the car has to get there");
-    expect(out).toMatchObject({ case_id: "c1", passed: true, score: 1, answered: 1, total: 2 });
+    expect(out).toMatchObject({ case_id: "c1", recorded: true, answered: 1, total: 2 });
+    expect(out).not.toHaveProperty("passed");
+    expect(out).not.toHaveProperty("score");
   });
 
-  it("reports a failure as a result, not as an error", async () => {
+  it("records a wrong answer without returning feedback", async () => {
     const d = deps();
-    expect(await tool(d, "submit_answer").execute({ case_id: "c1", answer: "WALK" })).toMatchObject(
-      { passed: false, score: 0 },
-    );
+    const out = (await tool(d, "submit_answer").execute({
+      case_id: "c1",
+      answer: "WALK",
+    })) as Record<string, unknown>;
+
+    expect(out).toMatchObject({ recorded: true, answered: 1 });
+    expect(out).not.toHaveProperty("passed");
+    expect(out).not.toHaveProperty("score");
   });
 
   it("refuses to re-score the same case as an answer oracle", async () => {

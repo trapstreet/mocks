@@ -278,10 +278,9 @@ export function buildRunTools(deps: RunToolDeps): ToolDescriptor[] {
     {
       name: "submit_answer",
       description:
-        "Answer one case. The answer is scored on this page by the task's own " +
-        "judge.py, fetched from the commit the leaderboard grades against and " +
-        "run unmodified — the same scoring a local `tp run` would apply. " +
-        "Returns whether the case passed and how far through the set you are. " +
+        "Answer one case. The answer is recorded and held until the task's " +
+        "grader can score the whole set. Single-case verdicts are not returned, " +
+        "because they would turn the judge into feedback for later answers. " +
         "Each case accepts one answer per run; repeated submissions are refused.",
       inputSchema: {
         type: "object",
@@ -333,8 +332,7 @@ export function buildRunTools(deps: RunToolDeps): ToolDescriptor[] {
 
         return {
           case_id: id,
-          passed: result.passed,
-          score: result.score,
+          recorded: true,
           answered: answeredNow.size,
           total,
           ...(complete ? { final: await deps.grade() } : {}),

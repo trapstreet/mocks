@@ -20,7 +20,7 @@ export type TraceStep =
   | { kind: "pdfRead"; caseId: string; fileId: string; page: number; pages: number }
   | { kind: "pdfSearch"; caseId: string; fileId: string; query: string; hits: number }
   | { kind: "exhausted"; answered: number; total: number }
-  | { kind: "answer"; caseId: string; answer: string; passed: boolean; score: number }
+  | { kind: "answer"; caseId: string; answer: string }
   | { kind: "graded"; passed: boolean; score: number }
   | { kind: "refused"; tool: string; error: string };
 
@@ -89,8 +89,6 @@ function stepFor(
       kind: "answer",
       caseId: o.case_id,
       answer: abbreviate(str(input.answer)),
-      passed: o.passed === true,
-      score: num(o.score),
     };
   }
 
