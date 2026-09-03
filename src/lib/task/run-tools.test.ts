@@ -124,6 +124,16 @@ describe("submit_answer", () => {
     );
   });
 
+  it("refuses to re-score the same case as an answer oracle", async () => {
+    const d = deps();
+    await tool(d, "submit_answer").execute({ case_id: "c1", answer: "WALK" });
+
+    expect(await tool(d, "submit_answer").execute({ case_id: "c1", answer: "DRIVE" })).toMatchObject(
+      { error: expect.stringContaining("already has an answer") },
+    );
+    expect(d.judge).toHaveBeenCalledTimes(1);
+  });
+
   it("refuses a case id that is not on this task", async () => {
     const d = deps();
     expect(await tool(d, "submit_answer").execute({ case_id: "nope", answer: "x" })).toMatchObject({

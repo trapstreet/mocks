@@ -281,7 +281,8 @@ export function buildRunTools(deps: RunToolDeps): ToolDescriptor[] {
         "Answer one case. The answer is scored on this page by the task's own " +
         "judge.py, fetched from the commit the leaderboard grades against and " +
         "run unmodified — the same scoring a local `tp run` would apply. " +
-        "Returns whether the case passed and how far through the set you are.",
+        "Returns whether the case passed and how far through the set you are. " +
+        "Each case accepts one answer per run; repeated submissions are refused.",
       inputSchema: {
         type: "object",
         properties: {
@@ -309,6 +310,11 @@ export function buildRunTools(deps: RunToolDeps): ToolDescriptor[] {
         if (!cases.some((c) => c.id === id)) {
           return {
             error: `no case "${id}" on this task — call get_next_case for the current one`,
+          };
+        }
+        if (answered().has(id)) {
+          return {
+            error: `case "${id}" already has an answer in this run — call get_next_case for the next case`,
           };
         }
 

@@ -137,12 +137,15 @@ export function BenchmarkRunner({ taskId }: { taskId: string }) {
 
   const judge = useCallback(
     async (caseId: string, answer: string) => {
+      if (resultsRef.current.some((r) => r.case_id === caseId)) {
+        throw new Error("this case already has an answer in this run");
+      }
       setBusy(caseId);
       try {
         const runner = await judgeRunner();
         const result = runner.judgeCase(caseId, answer);
         answersRef.current[caseId] = answer;
-        const next = [...resultsRef.current.filter((r) => r.case_id !== caseId), result];
+        const next = [...resultsRef.current, result];
         resultsRef.current = next;
         setResults(next);
         return result;
