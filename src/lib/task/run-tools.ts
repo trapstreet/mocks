@@ -202,9 +202,21 @@ export function buildRunTools(deps: RunToolDeps): ToolDescriptor[] {
             kind: f.kind,
             ...(f.kind === "pdf" ? { view_url: f.view_url } : {}),
           })),
+          // This used to read "Use read_pdf_page_text for a page, or
+          // search_pdf_text to find pages mentioning a term" — a nudge towards
+          // the text layer, and a measurably bad one. Two full runs of
+          // pdf-chart-reasoning on this site, one following that nudge and one
+          // told to open the document itself, scored 14/23 and 17/23. The
+          // whole difference was the questions that need looking at a figure:
+          // every `read_length` case went from failed to passed. The note now
+          // presents both routes and says what each is good for.
           note:
             c.files?.some((f) => f.kind === "pdf")
-              ? "Use read_pdf_page_text for a page, or search_pdf_text to find pages mentioning a term."
+              ? "Two ways to read a PDF, and they are not equivalent. " +
+                "search_pdf_text and read_pdf_page_text give you the text layer, " +
+                "which is fast and exact for tables and prose — but a value plotted " +
+                "in a figure is not text and will not be in it. To answer a question " +
+                "about a chart, open view_url and look at the document yourself."
               : "This case has no PDF files; the text prompt is in get_next_case.",
         };
       },

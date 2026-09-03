@@ -315,3 +315,45 @@ describe("naming the configuration without being asked", () => {
     expect(out.running_as).toBe("gpt-5.5 baseline");
   });
 });
+
+describe("what list_case_files says about reading a PDF", () => {
+  const pdfDeps = () =>
+    deps({
+      cases: () => [
+        {
+          id: "c1",
+          description: "",
+          question: "q",
+          files: [
+            {
+              id: "inputs/c1/document.pdf",
+              name: "document.pdf",
+              kind: "pdf",
+              view_url: "https://github.example/document.pdf",
+            },
+          ],
+        },
+      ],
+    } as Partial<RunToolDeps>);
+
+  // Measured, not guessed: two full runs of pdf-chart-reasoning on this site,
+  // one following the old nudge towards the text layer and one told to open
+  // the document, scored 14/23 and 17/23. Every `read_length` case — the ones
+  // that need looking at a figure — went from failed to passed.
+  it("does not steer an agent to the text layer for a figure", async () => {
+    const out = (await tool(pdfDeps(), "list_case_files").execute({ case_id: "c1" })) as {
+      note: string;
+    };
+
+    expect(out.note).toMatch(/open view_url and look at the document yourself/);
+    expect(out.note).toMatch(/not text and will not be in it/);
+  });
+
+  it("still hands over the link the agent needs to do that", async () => {
+    const out = (await tool(pdfDeps(), "list_case_files").execute({ case_id: "c1" })) as {
+      files: Array<{ view_url?: string }>;
+    };
+
+    expect(out.files[0].view_url).toBe("https://github.example/document.pdf");
+  });
+});
