@@ -16,10 +16,14 @@ const CONTRACT = new Set([
   "score",
   "passed",
   "matcher_results",
+  "matchers",
   "agent_answer", // the page already shows what was submitted
   "reason",
   "id",
-  "category",
+  // `category` used to be skipped as noise. On pdf-chart-reasoning it is the
+  // capability the case was written to probe — read_length, semantic,
+  // cross_figure — and it is the single most informative thing the judge
+  // prints, because the failures cluster by it.
   "difficulty",
   "raw_responses", // the answer itself, in another spelling
   // Fields a solution reports about itself. They travel with a local run;
@@ -72,13 +76,20 @@ export function summarizeVerdict(metrics: Record<string, unknown>): Verdict {
   // A judge that refused before scoring says so at the top level.
   if (typeof metrics.reason === "string" && metrics.reason) out.failures.push(metrics.reason);
 
-  const checks = metrics.matcher_results;
+  // Judges do not agree on how to spell a matcher. One writes
+  // {check, pass, reason}; pdf-chart-reasoning writes {kind, passed, detail}
+  // under `matchers`. Reading only the first spelling silently dropped every
+  // per-matcher explanation the second kind prints.
+  const checks = metrics.matcher_results ?? metrics.matchers;
   if (Array.isArray(checks)) {
     for (const c of checks) {
       if (!isObj(c)) continue;
-      const name = typeof c.check === "string" ? c.check : "check";
-      const why = typeof c.reason === "string" ? c.reason : "";
-      if (c.pass === false) out.failures.push(why ? `${name}: ${why}` : name);
+      const name =
+        typeof c.check === "string" ? c.check : typeof c.kind === "string" ? c.kind : "check";
+      const why =
+        typeof c.reason === "string" ? c.reason : typeof c.detail === "string" ? c.detail : "";
+      const failed = c.pass === false || c.passed === false;
+      if (failed) out.failures.push(why ? `${name}: ${why}` : name);
       else out.cleared.push(name);
     }
   }

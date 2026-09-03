@@ -88,9 +88,14 @@ describe("summarizeVerdict", () => {
 
   // Contract fields are shown elsewhere on the page; repeating them as
   // anonymous key/value rows would bury the one line that matters.
+  //
+  // `category` is deliberately NOT in this list any more. It costs MBTI a
+  // near-useless "category personality" row, and it buys pdf-chart-reasoning
+  // the field its failures actually cluster by — read_length 0/3 against
+  // semantic 4/4. The trade is worth it.
   it("does not repeat the fields the page already shows", () => {
     const keys = summarizeVerdict(MBTI_PASS).facets.map((f) => f.key);
-    for (const noise of ["score", "agent_answer", "raw_responses", "id", "category"]) {
+    for (const noise of ["score", "agent_answer", "raw_responses", "id"]) {
       expect(keys).not.toContain(noise);
     }
   });
@@ -105,5 +110,54 @@ describe("summarizeVerdict", () => {
 
   it("stays quiet for a judge that printed nothing but a score", () => {
     expect(hasSubstance(summarizeVerdict({ score: 1, passed: true }))).toBe(false);
+  });
+});
+
+// Captured from pdf-chart-reasoning's judge. It spells its matchers
+// {kind, passed, detail} under `matchers`, not {check, pass, reason} under
+// `matcher_results` — reading only the first spelling silently dropped every
+// explanation this judge prints.
+const PDF_FAIL = {
+  score: 0,
+  passed: false,
+  reason: "committed_value: committed 12, expected 13",
+  category: "read_length",
+  difficulty: "hard",
+  matchers: [
+    { kind: "committed_value", detail: "committed 12, expected 13", passed: false },
+    { kind: "no_hedge", detail: "committed a value", passed: true },
+  ],
+  committed: "12 participants",
+  committed_via: "answer line",
+};
+
+describe("a judge that spells its matchers differently", () => {
+  it("reads matchers under either name, with either key set", () => {
+    const v = summarizeVerdict(PDF_FAIL);
+
+    expect(v.failures).toContain("committed_value: committed 12, expected 13");
+    expect(v.cleared).toContain("no_hedge");
+  });
+
+  // The capability the case was written to probe. Failures on this task
+  // cluster by it — read_length 0/3, semantic 4/4 — which makes it the most
+  // informative thing the judge prints.
+  it("shows the capability the case was probing", () => {
+    expect(summarizeVerdict(PDF_FAIL).facets).toContainEqual({
+      key: "category",
+      value: "read_length",
+    });
+  });
+
+  it("does not also render the matcher list as an anonymous facet", () => {
+    const keys = summarizeVerdict(PDF_FAIL).facets.map((f) => f.key);
+    expect(keys).not.toContain("matchers");
+  });
+
+  it("still keeps what the agent committed to", () => {
+    expect(summarizeVerdict(PDF_FAIL).facets).toContainEqual({
+      key: "committed",
+      value: "12 participants",
+    });
   });
 });
