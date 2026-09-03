@@ -42,7 +42,10 @@ export default async function TaskPage({ params }: { params: Promise<{ id: strin
             this board on trapstreet ↗
           </a>
         </p>
-        <h1 className="max-w-[26ch] text-[26px] font-bold leading-[1.15] tracking-[-0.03em] text-[var(--head)]">
+        {/* No max-width: the constraint was wrapping titles that fit the rail
+            perfectly well. The longest live title is 70 characters, which sits
+            on one line at 24px and wraps on a phone, where it should. */}
+        <h1 className="text-[21px] font-bold leading-[1.15] tracking-[-0.03em] text-[var(--head)] sm:text-[24px]">
           {task.title}
         </h1>
         {task.summary && (
