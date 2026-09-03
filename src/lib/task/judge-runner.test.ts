@@ -202,6 +202,45 @@ if __name__ == "__main__":
     expect(out.metrics.detail).toMatchObject({ reason: "ok" });
   });
 
+  it("accepts judges that print a verdict and exit cleanly", () => {
+    const r = createJudgeRunner(
+      py,
+      bundle({
+        modules: {
+          "judge.py": `
+import json, sys
+if __name__ == "__main__":
+    print(json.dumps({"score": 1.0, "detail": "clean exit"}))
+    sys.exit()
+`,
+        },
+      }),
+    );
+
+    expect(r.judgeCase("car_wash_50m", "drive")).toMatchObject({
+      passed: true,
+      score: 1,
+      metrics: { detail: "clean exit" },
+    });
+  });
+
+  it("still rejects judges that exit non-zero", () => {
+    const r = createJudgeRunner(
+      py,
+      bundle({
+        modules: {
+          "judge.py": `
+import sys
+if __name__ == "__main__":
+    sys.exit(2)
+`,
+        },
+      }),
+    );
+
+    expect(() => r.judgeCase("car_wash_50m", "drive")).toThrow(/SystemExit/);
+  });
+
   // A judge that raises must not poison the next case by leaving stdout
   // swapped out from under the runtime.
   it("keeps working after a judge blows up", () => {

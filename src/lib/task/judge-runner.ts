@@ -61,7 +61,15 @@ os.environ["TRAPTASK_PAYLOAD"] = ${JSON.stringify(payload)}
 _stdout, sys.stdout = sys.stdout, io.StringIO()
 `);
     try {
-      py.runPython(src, { globals: py.toPy({ __name__: "__main__" }) });
+      py.runPython(`
+_source = ${JSON.stringify(src)}
+_globals = {"__name__": "__main__", "__file__": "judge.py"}
+try:
+    exec(compile(_source, "judge.py", "exec"), _globals)
+except SystemExit as _e:
+    if _e.code not in (None, 0):
+        raise
+`);
     } finally {
       // Restore even on a judge that raises, or every later case would write
       // into a buffer nobody reads.
