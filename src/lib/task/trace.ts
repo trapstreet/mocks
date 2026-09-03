@@ -19,8 +19,6 @@ export type TraceStep =
   | { kind: "files"; caseId: string; count: number }
   | { kind: "pdfRead"; caseId: string; fileId: string; page: number; pages: number }
   | { kind: "pdfSearch"; caseId: string; fileId: string; query: string; hits: number }
-  | { kind: "pdfImage"; caseId: string; fileId: string; page: number; pages: number; width: number; height: number }
-  | { kind: "pdfRegion"; caseId: string; fileId: string; page: number; pages: number; width: number; height: number }
   | { kind: "exhausted"; answered: number; total: number }
   | { kind: "answer"; caseId: string; answer: string; passed: boolean; score: number }
   | { kind: "graded"; passed: boolean; score: number }
@@ -83,30 +81,6 @@ function stepFor(
       fileId: str(o.file_id),
       query: str(o.query),
       hits: Array.isArray(o.results) ? o.results.length : 0,
-    };
-  }
-
-  if (tool === "render_pdf_page_image" && typeof o.case_id === "string") {
-    return {
-      kind: "pdfImage",
-      caseId: o.case_id,
-      fileId: str(o.file_id),
-      page: num(o.page),
-      pages: num(o.pages),
-      width: num(o.width),
-      height: num(o.height),
-    };
-  }
-
-  if (tool === "render_pdf_page_region" && typeof o.case_id === "string") {
-    return {
-      kind: "pdfRegion",
-      caseId: o.case_id,
-      fileId: str(o.file_id),
-      page: num(o.page),
-      pages: num(o.pages),
-      width: num(o.width),
-      height: num(o.height),
     };
   }
 

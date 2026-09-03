@@ -48,38 +48,6 @@ export interface RunToolDeps {
     pages: number;
     results: Array<{ page: number; snippet: string }>;
   }>;
-  renderPdfPageImage(
-    caseId: string,
-    fileId: string,
-    page: number,
-    scale?: number,
-  ): Promise<{
-    case_id: string;
-    file_id: string;
-    page: number;
-    pages: number;
-    width: number;
-    height: number;
-    scale: number;
-    image_data_url: string;
-  }>;
-  renderPdfPageRegion(
-    caseId: string,
-    fileId: string,
-    page: number,
-    region: { x: number; y: number; width: number; height: number },
-    scale?: number,
-  ): Promise<{
-    case_id: string;
-    file_id: string;
-    page: number;
-    pages: number;
-    region: { x: number; y: number; width: number; height: number };
-    width: number;
-    height: number;
-    scale: number;
-    image_data_url: string;
-  }>;
   judge(
     caseId: string,
     answer: string,
@@ -89,7 +57,6 @@ export interface RunToolDeps {
 
 const message = (e: unknown) =>
   e instanceof Error ? e.message : "the judge could not be run";
-const optionalNumber = (v: unknown) => (v === undefined || v === null ? undefined : Number(v));
 
 const caseById = (
   cases: Array<{ id: string; files?: CaseInputFile[] }>,
@@ -181,7 +148,7 @@ export function buildRunTools(deps: RunToolDeps): ToolDescriptor[] {
           total: cases.length,
           question:
             c.question ||
-            "The prompt and source document are in the case files. Use list_case_files, then PDF text or image tools to inspect them.",
+            "The prompt and source document are in the case files. Use list_case_files, then read_pdf_page_text or search_pdf_text to inspect them.",
           files: (c.files ?? []).map((f) => ({
             file_id: f.id,
             name: f.name,
@@ -235,7 +202,7 @@ export function buildRunTools(deps: RunToolDeps): ToolDescriptor[] {
           })),
           note:
             c.files?.some((f) => f.kind === "pdf")
-              ? "Use read_pdf_page_text/search_pdf_text for text, or render_pdf_page_image/render_pdf_page_region for visual pages."
+              ? "Use read_pdf_page_text for a page, or search_pdf_text to find pages mentioning a term."
               : "This case has no PDF files; the text prompt is in get_next_case.",
         };
       },
@@ -301,88 +268,6 @@ export function buildRunTools(deps: RunToolDeps): ToolDescriptor[] {
         if (!q) return { error: "query is required" };
         try {
           return await deps.searchPdfText(caseId, fileId, q);
-        } catch (e) {
-          return { error: message(e) };
-        }
-      },
-    },
-    {
-      name: "render_pdf_page_image",
-      description:
-        "Render one PDF page as a PNG image. Use this for scanned pages, charts, " +
-        "figures, and other information that is visible but missing from the " +
-        "PDF text layer. This exposes the input page; it does not interpret it.",
-      inputSchema: {
-        type: "object",
-        properties: {
-          case_id: { type: "string", description: "The case_id given by get_next_case." },
-          file_id: { type: "string", description: "A PDF file_id from list_case_files." },
-          page: { type: "number", description: "1-indexed page number." },
-          scale: {
-            type: "number",
-            description: "Optional render scale, clamped between 0.5 and 3. Default is 1.5.",
-          },
-        },
-        required: ["case_id", "file_id", "page"],
-        additionalProperties: false,
-      },
-      annotations: { readOnlyHint: true },
-      execute: async ({ case_id, file_id, page, scale }) => {
-        const stop = blocked();
-        if (stop) return stop;
-        const caseId = String(case_id ?? "");
-        const fileId = String(file_id ?? "");
-        if (!pdfById(deps.cases(), caseId, fileId)) {
-          return { error: `no PDF file "${fileId}" on case "${caseId}"` };
-        }
-        try {
-          return await deps.renderPdfPageImage(caseId, fileId, Number(page), optionalNumber(scale));
-        } catch (e) {
-          return { error: message(e) };
-        }
-      },
-    },
-    {
-      name: "render_pdf_page_region",
-      description:
-        "Render a rectangular region of one PDF page as a PNG image. Region " +
-        "coordinates are page-relative numbers from 0 to 1: x, y, width, " +
-        "height. Use this to zoom into a chart, table, or scanned area.",
-      inputSchema: {
-        type: "object",
-        properties: {
-          case_id: { type: "string", description: "The case_id given by get_next_case." },
-          file_id: { type: "string", description: "A PDF file_id from list_case_files." },
-          page: { type: "number", description: "1-indexed page number." },
-          x: { type: "number", description: "Left edge as a fraction of page width." },
-          y: { type: "number", description: "Top edge as a fraction of page height." },
-          width: { type: "number", description: "Region width as a fraction of page width." },
-          height: { type: "number", description: "Region height as a fraction of page height." },
-          scale: {
-            type: "number",
-            description: "Optional render scale, clamped between 0.5 and 3. Default is 1.5.",
-          },
-        },
-        required: ["case_id", "file_id", "page", "x", "y", "width", "height"],
-        additionalProperties: false,
-      },
-      annotations: { readOnlyHint: true },
-      execute: async ({ case_id, file_id, page, x, y, width, height, scale }) => {
-        const stop = blocked();
-        if (stop) return stop;
-        const caseId = String(case_id ?? "");
-        const fileId = String(file_id ?? "");
-        if (!pdfById(deps.cases(), caseId, fileId)) {
-          return { error: `no PDF file "${fileId}" on case "${caseId}"` };
-        }
-        try {
-          return await deps.renderPdfPageRegion(
-            caseId,
-            fileId,
-            Number(page),
-            { x: Number(x), y: Number(y), width: Number(width), height: Number(height) },
-            optionalNumber(scale),
-          );
         } catch (e) {
           return { error: message(e) };
         }
