@@ -336,17 +336,14 @@ describe("what list_case_files says about reading a PDF", () => {
       ],
     } as Partial<RunToolDeps>);
 
-  // Measured, not guessed: two full runs of pdf-chart-reasoning on this site,
-  // one following the old nudge towards the text layer and one told to open
-  // the document, scored 14/23 and 17/23. Every `read_length` case — the ones
-  // that need looking at a figure — went from failed to passed.
-  it("does not steer an agent to the text layer for a figure", async () => {
+  it("presents visual PDF inspection and text extraction as separate routes", async () => {
     const out = (await tool(pdfDeps(), "list_case_files").execute({ case_id: "c1" })) as {
       note: string;
     };
 
-    expect(out.note).toMatch(/open view_url and look at the document yourself/);
-    expect(out.note).toMatch(/not text and will not be in it/);
+    expect(out.note).toMatch(/view_url for visual inspection/);
+    expect(out.note).toMatch(/text layer/);
+    expect(out.note).toMatch(/plotted values may only be visible/);
   });
 
   it("still hands over the link the agent needs to do that", async () => {

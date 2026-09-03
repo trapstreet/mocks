@@ -68,10 +68,13 @@ const ext = (path: string) => {
  * to `typeof fetch` bought nothing and made every test double a type error.
  */
 export type UrlFetch = (url: string) => Promise<Response>;
+type NextFetchInit = RequestInit & { next?: { revalidate?: number } };
+const cachedFetch: UrlFetch = (url) =>
+  fetch(url, { next: { revalidate: 3600 } } as NextFetchInit);
 
 export async function fetchTaskBundle(
   pin: TaskPin,
-  fetchImpl: UrlFetch = (url) => fetch(url),
+  fetchImpl: UrlFetch = cachedFetch,
 ): Promise<TaskBundle> {
   const prefix = pin.repo_path ? `${pin.repo_path}/` : "";
   const raw = (p: string) =>

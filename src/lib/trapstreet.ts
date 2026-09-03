@@ -21,7 +21,12 @@ export interface TaskSummary {
 const SLUG = /^[a-z0-9][a-z0-9-]{0,80}$/i;
 
 type Fetcher = (url: string, init?: RequestInit) => Promise<Response>;
-const plainFetch: Fetcher = (url, init) => fetch(url, init);
+type NextFetchInit = RequestInit & { next?: { revalidate?: number } };
+const plainFetch: Fetcher = (url, init) =>
+  fetch(url, {
+    ...(init ?? {}),
+    next: { revalidate: 900 },
+  } as NextFetchInit);
 
 async function readJson(res: Response, what: string): Promise<unknown> {
   if (!res.ok) throw new Error(`${what} failed (HTTP ${res.status})`);

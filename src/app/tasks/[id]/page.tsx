@@ -1,6 +1,7 @@
 import { emphasise } from "@/lib/emphasis";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
+import { Suspense } from "react";
 import { getTask } from "@/lib/trapstreet";
 import { BenchmarkRunner } from "@/components/benchmark-runner";
 import { RunBoard } from "@/components/run-board";
@@ -11,12 +12,7 @@ export async function generateMetadata({
   params: Promise<{ id: string }>;
 }): Promise<Metadata> {
   const { id } = await params;
-  try {
-    const t = await getTask(id);
-    return { title: t.title, description: t.summary || undefined };
-  } catch {
-    return { title: id };
-  }
+  return { title: `${id} · mocks` };
 }
 
 export default async function TaskPage({ params }: { params: Promise<{ id: string }> }) {
@@ -53,7 +49,9 @@ export default async function TaskPage({ params }: { params: Promise<{ id: strin
         )}
       </header>
       <BenchmarkRunner taskId={task.id} />
-      <RunBoard taskId={task.id} ranked={task.rankingMetric !== "none"} />
+      <Suspense fallback={null}>
+        <RunBoard taskId={task.id} ranked={task.rankingMetric !== "none"} />
+      </Suspense>
     </div>
   );
 }

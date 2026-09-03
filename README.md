@@ -17,7 +17,7 @@ with provenance, run the task through `tp` on trapstreet.
 
 Surface | Use it to
 --- | ---
-`/tasks/<id>` | Sit a real trapstreet task in the browser. Text cases are handed over directly; PDF cases are inspected through page-level PDF tools.
+`/tasks/<id>` | Sit a real trapstreet task in the browser. Text cases are handed over directly; PDF cases expose file handles, viewer links, and text-layer helpers.
 `/arena` | Try a fresh synthetic wiki-routing question with no public answer key. Search returns titles only, so the agent has to walk the chain.
 
 There is no per-task solution code here. The task page reads `traptask.yaml` for
@@ -35,8 +35,8 @@ Page | Tools
 return manifest descriptions, expected answers, verdicts, gold labels, or raw
 file URLs. PDF files include a GitHub viewer URL so an agent can inspect the
 page visually with its browser. PDF contents stay out of the main payload: an
-agent lists files, then reads one PDF page or searches page text through
-separate read-only tools.
+agent lists files, then either opens the viewer URL or reads/searches the PDF
+text layer through separate read-only tools.
 
 `submit_answer` runs the task's own judge against exactly what a solution would
 print to stdout. When every case has an answer, the task's grader scores the set.

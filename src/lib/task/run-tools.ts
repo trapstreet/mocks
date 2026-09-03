@@ -148,7 +148,7 @@ export function buildRunTools(deps: RunToolDeps): ToolDescriptor[] {
           total: cases.length,
           question:
             c.question ||
-            "The prompt and source document are in the case files. Use list_case_files, then read_pdf_page_text or search_pdf_text to inspect them.",
+            "The prompt and source document are in the case files. Use list_case_files to inspect them.",
           files: (c.files ?? []).map((f) => ({
             file_id: f.id,
             name: f.name,
@@ -175,7 +175,8 @@ export function buildRunTools(deps: RunToolDeps): ToolDescriptor[] {
       description:
         "List the input files for one case. Text tasks usually have their prompt " +
         "in get_next_case. PDF tasks keep the document out of the main payload; " +
-        "use read_pdf_page_text or search_pdf_text on a listed PDF file.",
+        "listed PDFs include a viewer link, and the page also exposes text-layer " +
+        "helpers when text extraction is the right tool.",
       inputSchema: {
         type: "object",
         properties: {
@@ -202,21 +203,14 @@ export function buildRunTools(deps: RunToolDeps): ToolDescriptor[] {
             kind: f.kind,
             ...(f.kind === "pdf" ? { view_url: f.view_url } : {}),
           })),
-          // This used to read "Use read_pdf_page_text for a page, or
-          // search_pdf_text to find pages mentioning a term" — a nudge towards
-          // the text layer, and a measurably bad one. Two full runs of
-          // pdf-chart-reasoning on this site, one following that nudge and one
-          // told to open the document itself, scored 14/23 and 17/23. The
-          // whole difference was the questions that need looking at a figure:
-          // every `read_length` case went from failed to passed. The note now
-          // presents both routes and says what each is good for.
+          // PDF text extraction is useful, but not always sufficient: scanned
+          // pages and plotted values may only be visible in the document view.
           note:
             c.files?.some((f) => f.kind === "pdf")
-              ? "Two ways to read a PDF, and they are not equivalent. " +
-                "search_pdf_text and read_pdf_page_text give you the text layer, " +
-                "which is fast and exact for tables and prose — but a value plotted " +
-                "in a figure is not text and will not be in it. To answer a question " +
-                "about a chart, open view_url and look at the document yourself."
+              ? "PDF files include view_url for visual inspection. " +
+                "search_pdf_text and read_pdf_page_text read the PDF text layer, " +
+                "which is useful for prose and tables, but scanned pages and " +
+                "plotted values may only be visible in the document view."
               : "This case has no PDF files; the text prompt is in get_next_case.",
         };
       },
